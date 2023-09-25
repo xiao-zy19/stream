@@ -1,6 +1,6 @@
 # Stream
 
-Zhenyu Xiao, Haobin Zhou, Yimeng Xu, and Emma
+Zhenyu Xiao, Haobin Zhou, Yimeng Xu, and Emma Cardenas
 
 We are a group of students from Johns Hopkins University. We are working on a project focusing on **Track patient recovery in real-time by processing streaming data** in the course Biomedical Data Design.
 
