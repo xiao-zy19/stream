@@ -5,36 +5,35 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def patient_id_age():
+def patient_id_age(file_name1="data/diagnosis.csv", file_name2="data/patient.csv"):
     """
     Function to extract patient id and age.
 
-    Parameters: None
+    Parameters:
+        file_name1: the file path of diagnosis.csv
+        file_name2: the file path of patient.csv
     Return:
         patient_id: the list of wanted patient id
         df_patient_age: the dataframe of patient age data, including patientunitstayid, age
     """
     # import diagnosis.csv
-    df_diagnosis = pd.read_csv("diagnosis.csv")
+    df_diagnosis = pd.read_csv(file_name1)
     df_diagnosis.sort_values(by=["patientunitstayid", "diagnosisoffset"], inplace=True)
 
     # select cardiovascular patients
     df_cardiovascular = df_diagnosis[
         df_diagnosis["diagnosisstring"].str.contains("cardiovascular")
     ]
-    # print(df_cardiovascular)
 
     # get shock patient
     shock_patient = df_cardiovascular[
         df_cardiovascular["diagnosisstring"].str.contains("shock")
     ]
-    # print(shock_patient)
 
     # get ventricular patient
     ventricular_patient = df_cardiovascular[
         df_cardiovascular["diagnosisstring"].str.contains("ventricular")
     ]
-    # print(ventricular_patient)
 
     # get chest pain patient
     chest_pain_patient = df_cardiovascular[
@@ -50,21 +49,18 @@ def patient_id_age():
     df_wanted = pd.concat(
         [shock_patient, ventricular_patient, chest_pain_patient, arrhythmias_patient]
     )
-    # print(df_wanted)
 
     # Get the patient ids from df_wanted & sort the patient id
     # patient_id_all contains multiple entry patient's stayid
     patient_id_all = df_wanted["patientunitstayid"].unique()
     patient_id_all.sort()
-    # print(patient_id_all)
 
     ## exclude patients with unitvisitnumber>1
     # import patient.csv
-    df_patient = pd.read_csv("patient.csv")
+    df_patient = pd.read_csv(file_name2)
     df_patient.sort_values(by=["patientunitstayid"], inplace=True)
     df_patient_buf = df_patient[df_patient["patientunitstayid"].isin(patient_id_all)]
     df_1time_patient = df_patient_buf[df_patient_buf["unitvisitnumber"] == 1]
-    # print(df_1time_patient)
 
     # select the patient id from df_1time_patient
     patient_id = df_1time_patient["patientunitstayid"].unique()
