@@ -6,4 +6,4 @@ We are a group of students from Johns Hopkins University. We are working on a pr
 
 This repository will contain our source codes and every week progress.
 
-**eICU Database** website: https://physionet.org/content/eicu-crd/2.0/
+The database we are going to use is **eICU Database**, you can download the database on their website: https://physionet.org/content/eicu-crd/2.0/
