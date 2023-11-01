@@ -4,6 +4,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+def create_index(df):
+    """
+    Create first occurrence index for every patient
+    """
+    # create a dictionary to store the first occurrence index
+    value_position_dict = {}
+    first_occurrences = []
+    for idx, value in enumerate(df['patientunitstayid']):
+        # if the value is not in the dictionary, add it and create index
+        if value not in value_position_dict:
+            value_position_dict[value] = idx
+            first_occurrences.append(idx)
+
+    first_occurrences.append(len(df))
+    # create first occurrence index for every patient
+    df_index = pd.Series(first_occurrences)
+    return df_index
+
 
 def patient_id_age(file_name1="data/diagnosis.csv", file_name2="data/patient.csv"):
     """
@@ -134,17 +152,9 @@ def heart_rate(
 
     # exclude abnormal heart rate values
     HR.loc[:, "heartrate"] = HR["heartrate"].apply(normal_heartrate)
-    value_position_dict = {}
-    first_occurrences = []
-    for idx, value in enumerate(HR["patientunitstayid"]):
-        # if the value is not in the dictionary, add it and create index
-        if value not in value_position_dict:
-            value_position_dict[value] = idx
-            first_occurrences.append(idx)
-
-    first_occurrences.append(len(HR))
-    # create first occurrence index for every patient
-    HR_index = pd.Series(first_occurrences)
+    
+    # create index for HR
+    HR_index = create_index(HR)
 
     end_time = time.time()
     print(f"Heart Rate Data Loaded. Time: {end_time - start_time:.2f}s")
@@ -216,17 +226,9 @@ def temp(
     # exclude abnormal temp values and convert Fahrenheit to Celsius
     Temp.loc[:, "temperature"] = Temp["temperature"].apply(normal_temperature)
 
-    value_position_dict = {}
-    first_occurrences = []
-    for idx, value in enumerate(Temp["patientunitstayid"]):
-        # if the value is not in the dictionary, add it and create index
-        if value not in value_position_dict:
-            value_position_dict[value] = idx
-            first_occurrences.append(idx)
-
-    first_occurrences.append(len(Temp))
-    # create first occurrence index for every patient
-    Temp_index = pd.Series(first_occurrences)
+    # create index for Temp
+    Temp_index = create_index(Temp)
+    
     end_time = time.time()
     print(f"Temperature Data Loaded. Time: {end_time - start_time:.2f}s")
 
