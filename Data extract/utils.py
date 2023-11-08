@@ -24,7 +24,7 @@ def create_index(df):
     return df_index
 
 
-def patient_id_age(file_name1="data/diagnosis.csv", file_name2="data/patient.csv"):
+def patient_id_age(file_name1="diagnosis.csv", file_name2="patient.csv"):
     """
     Function to extract patient id and age.
 
@@ -94,7 +94,7 @@ def patient_id_age(file_name1="data/diagnosis.csv", file_name2="data/patient.csv
 
 
 def heart_rate(
-    patient_id, file_name1="data/vitalPeriodic.csv", file_name2="data/nurseCharting.csv"
+    patient_id, file_name1="vitalPeriodic.csv", file_name2="nurseCharting.csv"
 ):
     """
     Function to extract heart rate values.
@@ -164,7 +164,7 @@ def heart_rate(
 
 
 def temp(
-    patient_id, file_name1="data/vitalPeriodic.csv", file_name2="data/nurseCharting.csv"
+    patient_id, file_name1="vitalPeriodic.csv", file_name2="nurseCharting.csv"
 ):
     """
     Function to extract temperature values.
@@ -238,9 +238,9 @@ def temp(
 
 def blood_pressure(
     patient_id,
-    file_name1="data/vitalPeriodic.csv",
-    file_name2="data/nurseCharting.csv",
-    file_name3="data/vitalAperiodic.csv",
+    file_name1="vitalPeriodic.csv",
+    file_name2="nurseCharting.csv",
+    file_name3="vitalAperiodic.csv",
 ):
     """
     Function to extract blood pressure values.
