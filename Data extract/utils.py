@@ -94,7 +94,8 @@ def patient_id_age(file_name1="diagnosis.csv", file_name2="patient.csv"):
 
 
 def heart_rate(
-    patient_id, file_name1="vitalPeriodic.csv", file_name2="nurseCharting.csv"
+    patient_id, file_name1="vitalPeriodic.csv", file_name2="nurseCharting.csv",
+    drop_neg=False
 ):
     """
     Function to extract heart rate values.
@@ -150,6 +151,10 @@ def heart_rate(
     HR_n = df_nurseCharting[["patientunitstayid", "observationoffset", "heartrate"]]
     HR = pd.concat([HR_v, HR_n]).astype(float)
     HR.sort_values(by=["patientunitstayid", "observationoffset"], inplace=True)
+    
+    # delete negative observationoffset
+    if drop_neg:
+        HR = HR.drop(HR[HR['observationoffset'] < 0].index)
 
     # exclude abnormal heart rate values
     HR.loc[:, "heartrate"] = HR["heartrate"].apply(normal_heartrate)
