@@ -11,3 +11,6 @@ _minted-*/
 
 # Matlab backup
 *.asv
+
+# Python bytecode
+*.pyc
