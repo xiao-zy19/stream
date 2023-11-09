@@ -89,8 +89,10 @@ def patient_id_age(file_name1="diagnosis.csv", file_name2="patient.csv"):
     df_patient_age = df_patient_age.replace(["> 89", ">89"], "90")
     df_patient_age["age"].fillna(0, inplace=True)
     df_patient_age = df_patient_age.astype({"age": "int32"})
+    
+    df_patient_offset = df_1time_patient[["patientunitstayid", "unitdischargeoffset"]]
 
-    return patient_id, df_patient_age
+    return patient_id, df_patient_age, df_patient_offset
 
 
 def heart_rate(
@@ -227,6 +229,10 @@ def temp(
     ]
 
     Temp = pd.concat([Temp_v, Temp_n]).astype(float)
+    
+    # drop null values
+    Temp.dropna(inplace=True)
+    
     Temp.sort_values(by=["patientunitstayid", "observationoffset"], inplace=True)
 
     # exclude abnormal temp values and convert Fahrenheit to Celsius
