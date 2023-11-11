@@ -85,7 +85,11 @@ for i in range(len(HR_full_index)-1):
         y_pred_all = gp.predict(t.reshape(-1, 1))
         print(f'Finish {i}th patient')
         
-        save_path = f'.~/output/hr/demo/{HR_id}.png'
+        folder_path = '/home/en580-zxia028/output/hr/demo'
+        file_name = 'HR_interpolation_' + str(HR_id) + '.png'
+        os.makedirs(folder_path, exist_ok=True)
+        
+        plt.figure()
         plt.scatter(t_known, y_known, color='red', label='Known data')
         plt.scatter(t_missing, y_pred, color='blue', label='Interpolated data')
         plt.plot(t, y_pred_all)
@@ -96,8 +100,8 @@ for i in range(len(HR_full_index)-1):
         plt.xlabel('Time Offset')
         plt.ylabel('Heart Rate')
         plt.legend()
-        plt.show()
-        plt.savefig(save_path)
+        plt.savefig(os.path.join(folder_path, file_name))
+        # plt.show()
         # print(HR_full.iloc[HR_full_index[i]:HR_full_index[i+1]])
 
 print(f'GaussianProcess finished!')
