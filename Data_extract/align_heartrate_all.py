@@ -4,11 +4,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from utils import patient_id_age, heart_rate, create_index
 
-print(f'start aligning heart rate data')
 # change to your folder path
 # os.chdir('C:/Users/xiao-zy19/Desktop/Johns Hopkins/Biomedical Data Design/EICU Database/eicu-collaborative-research-database-demo-2.0.1')
 # os.chdir('/Users/xiao-zy19/Desktop/Johns Hopkins/Biomedical Data Design/EICU Database/eicu-collaborative-research-database-demo-2.0.1') 
-os.chdir('/home/en580-zxia028/EICU_demo/data')
+os.chdir('/home/en580-zxia028/EICU/data')
 
 # get patient id
 patient_id, patient_age, patient_offset = patient_id_age()
@@ -20,11 +19,11 @@ print(patient_offset)
 
 patient_hours = patient_offset.copy().reset_index(drop=True)
 patient_hours['unitdischargeoffset'] = np.floor(patient_hours['unitdischargeoffset']/60).astype(int)
-print(patient_hours)
+# print(patient_hours)
 
 unique_HR_patient_ids = HR['patientunitstayid'].unique()
 patient_hours = patient_hours[patient_hours['patientunitstayid'].isin(unique_HR_patient_ids)].reset_index(drop=True)
-print(patient_hours)
+# print(patient_hours)
 
 HR_hour_buf = HR.copy().reset_index(drop=True)
 HR_hour_buf["observationoffset"] = np.floor(HR_hour_buf["observationoffset"]/60).astype(int)
@@ -86,7 +85,7 @@ for i in range(len(HR_full_index)-1):
         y_pred_all = gp.predict(t.reshape(-1, 1))
         print(f'Finish {i}th patient')
         
-        folder_path = '/home/en580-zxia028/output/hr/demo'
+        folder_path = '/home/en580-zxia028/output/hr/all'
         file_name = 'HR_interpolation_' + str(HR_id) + '.png'
         os.makedirs(folder_path, exist_ok=True)
         
