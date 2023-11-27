@@ -106,6 +106,7 @@ def heart_rate(
         patient_id: the list of wanted patient id
         file_name1: the file path of vitalPeriodic.csv
         file_name2: the file path of nurseCharting.csv
+        drop_neg: whether to drop negative observationoffset
     Returns:
         HR: the dataframe of heart rate data, including patientunitstayid, observationoffset, heartrate
         HR_index: the series of the index of the first occurrence of each patient
@@ -409,13 +410,13 @@ def normal_temperature(num):
         return num
 
 
-def align_data(patient_id, patient_offset, data, kernel='C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))'):
+def align_data(patient_batch, patient_offset, data, kernel='C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))', graph=False):
     
     """
     Summary: align data and interpolate missing values
     
     Args:
-        patient_id: the list of wanted patient id
+        patient_batch: the list of wanted patient id, used to split data
         patient_offset: the dataframe of patient offset data, including patientunitstayid, unitdischargeoffset
         data: the dataframe of data, including patientunitstayid, observationoffset, value
         kernel: the self-defined kernel function for Gaussian Process Regressor
@@ -432,7 +433,10 @@ def align_data(patient_id, patient_offset, data, kernel='C(1.0) * RBF(10) + Whit
     kernel = eval(kernel)
     
     column_names = data.columns.tolist()
-    print(column_names)
+    print(f'column names: {column_names}')
+    
+    data = data[data[column_names[0]].isin(patient_batch)]
+    patient_offset = patient_offset[patient_offset[column_names[0]].isin(patient_batch)]
     
     # transform patient_offset to hours
     patient_hours = patient_offset.copy().reset_index(drop=True)
@@ -442,9 +446,10 @@ def align_data(patient_id, patient_offset, data, kernel='C(1.0) * RBF(10) + Whit
     unique_data_patient_ids = data['patientunitstayid'].unique()
     patient_hours = patient_hours[patient_hours['patientunitstayid'].isin(unique_data_patient_ids)].reset_index(drop=True)
     
-    # 
+    # change observationoffset to hours
     data_hour_buf = data.copy().reset_index(drop=True)
-    data_hour_buf["observationoffset"] = np.floor(data_hour_buf["observationoffset"]/60).astype(int)
+    # data_hour_buf["observationoffset"] = np.floor(data_hour_buf["observationoffset"]/60).astype(int)
+    data_hour_buf[column_names[1]] = np.floor(data_hour_buf[column_names[1]]/60).astype(int)
     data_hour_buf = data_hour_buf.groupby([column_names[0], column_names[1]], as_index=False)[column_names[2]].mean()
     data_hour_buf.sort_values(by=[column_names[0], column_names[1]], inplace=True)
     
@@ -496,5 +501,19 @@ def align_data(patient_id, patient_offset, data, kernel='C(1.0) * RBF(10) + Whit
                 mask = (data_full[column_names[0]] == row[column_names[0]]) & (data_full[column_names[1]] == row[column_names[1]]) & data_full[column_names[2]].isnull()
                 data_full.loc[mask, column_names[2]] = row[column_names[2]]
             print(f'finished {i}th patient, patient_id: {data_id}')
-            
+            if graph:
+                y_pred_all = gp.predict(t.reshape(-1, 1))
+                plt.figure()
+                plt.scatter(t_known, y_known, color='red', label='Known data')
+                plt.scatter(t_missing, y_pred, color='blue', label='Interpolated data')
+                plt.plot(t, y_pred_all)
+                plt.fill_between(t_missing, y_pred - sigma, y_pred + sigma, alpha=0.2, color='blue')
+                plt.title(f'Interpolation for Patient {data_id}')
+                plt.xlabel('Time Offset')
+                plt.ylabel(column_names[2])
+                plt.legend()
+                plt.show()
+        
+    print(f'Gaussian Process Finished!')  
+          
     return data_full, data_full_index
