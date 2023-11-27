@@ -407,3 +407,94 @@ def normal_temperature(num):
     # Return normal values directly
     else:
         return num
+
+
+def align_data(patient_id, patient_offset, data, kernel='C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))'):
+    
+    """
+    Summary: align data and interpolate missing values
+    
+    Args:
+        patient_id: the list of wanted patient id
+        patient_offset: the dataframe of patient offset data, including patientunitstayid, unitdischargeoffset
+        data: the dataframe of data, including patientunitstayid, observationoffset, value
+        kernel: the self-defined kernel function for Gaussian Process Regressor
+
+    Returns:
+        data_full: the dataframe of aligned and interpolated data, including patientunitstayid, observationoffset, value
+        data_full_index: the series of the index of the first occurrence of each patient
+    """
+    
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, WhiteKernel
+    
+    # turn kernel string to kernel function
+    kernel = eval(kernel)
+    
+    column_names = data.columns.tolist()
+    print(column_names)
+    
+    # transform patient_offset to hours
+    patient_hours = patient_offset.copy().reset_index(drop=True)
+    patient_hours['unitdischargeoffset'] = np.floor(patient_hours['unitdischargeoffset']/60).astype(int)
+    
+    # get unique patient ids in data
+    unique_data_patient_ids = data['patientunitstayid'].unique()
+    patient_hours = patient_hours[patient_hours['patientunitstayid'].isin(unique_data_patient_ids)].reset_index(drop=True)
+    
+    # 
+    data_hour_buf = data.copy().reset_index(drop=True)
+    data_hour_buf["observationoffset"] = np.floor(data_hour_buf["observationoffset"]/60).astype(int)
+    data_hour_buf = data_hour_buf.groupby([column_names[0], column_names[1]], as_index=False)[column_names[2]].mean()
+    data_hour_buf.sort_values(by=[column_names[0], column_names[1]], inplace=True)
+    
+    data_hour_cleaned = pd.merge(data_hour_buf, patient_hours, on=column_names[0], how='left')
+    data_hour_cleaned = data_hour_cleaned[data_hour_cleaned[column_names[1]] <= data_hour_cleaned['unitdischargeoffset']]
+    data_hour = data_hour_cleaned.drop(['unitdischargeoffset'], axis=1)
+    # print(data_hour)
+    
+    max_offset_per_patient = data_hour.groupby(column_names[0]).max().reset_index()
+    
+    complete_ranges = []
+    for index, row in max_offset_per_patient.iterrows():
+        patient_id = row[column_names[0]]
+        max_offset = row[column_names[1]]
+        complete_range = pd.DataFrame({
+            column_names[0]: patient_id,
+            column_names[1]: range(int(max_offset)+1)
+        })
+        complete_ranges.append(complete_range)
+    
+    complete_ranges = pd.concat(complete_ranges, ignore_index=True)
+    data_full = pd.merge(complete_ranges, data_hour, on=[column_names[0], column_names[1]], how='left')
+    data_full_index = create_index(data_full)
+    # print(data_full_index)
+    
+    for i in range(len(data_full_index)-1):
+        if data_full.iloc[data_full_index[i]:data_full_index[i+1]].isnull().values.any() and i<50: # test
+            data_data = data_full.iloc[data_full_index[i]:data_full_index[i+1]][[column_names[1], column_names[2]]].to_numpy()
+            data_id = data_full.iloc[data_full_index[i]:data_full_index[i+1]][column_names[0]].unique()[0]
+            
+            t = data_data[:, 0]
+            y = data_data[:, 1]
+            t_known = t[~np.isnan(y)]
+            y_known = y[~np.isnan(y)]
+            t_missing = t[np.isnan(y)]
+            
+            # kernel
+            # kernel = C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))
+            gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=1000, normalize_y=True)
+            gp.fit(t_known.reshape(-1, 1), y_known) #fit
+            y_pred, sigma = gp.predict(t_missing.reshape(-1, 1), return_std=True)    
+            
+            inter_data = pd.DataFrame({
+                column_names[0]: data_id,
+                column_names[1]: t_missing,
+                column_names[2]: y_pred
+            })
+            for idx, row in inter_data.iterrows():
+                mask = (data_full[column_names[0]] == row[column_names[0]]) & (data_full[column_names[1]] == row[column_names[1]]) & data_full[column_names[2]].isnull()
+                data_full.loc[mask, column_names[2]] = row[column_names[2]]
+            print(f'finished {i}th patient, patient_id: {data_id}')
+            
+    return data_full, data_full_index
