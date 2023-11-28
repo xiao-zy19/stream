@@ -5,6 +5,20 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
+def convert_to_float(df):
+    """
+    Convert the last column of dataframe to float64
+
+    Args:
+        df: the dataframe to be converted
+
+    Returns:
+        df: the converted dataframe
+    """
+    df.iloc[:, -1] = pd.to_numeric(df.iloc[:, -1], errors='coerce').astype('float64')
+    return df
+
+
 def create_index(df):
     """
     Create first occurrence index for every patient
