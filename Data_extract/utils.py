@@ -377,6 +377,80 @@ def blood_pressure(
         Noninvasivesystolic,
         Noninvasivesystolic_index,
     )
+    
+
+def glasgow(
+    patient_id, file_name1="nurseCharting.csv"
+):
+    """
+    Function to extract urine values.
+    Parameters:
+        patient_id: the list of wanted patient id
+        file_name1: the file path of nurseCharting.csv
+    Return:
+        Glasgow: the dataframe of glasgow data, including patientunitstayid, observationoffset, glasgow score
+        Glasgow_index: the series of the index of the first occurrence of each patient
+    Usage:
+        If we want the i th patient data (i starts from 0)
+        use glasgow.iloc[glasgow_index[i]:glasgow_index[i+1]]
+    """
+    print("Loading Glasgow Data...")
+    start_time = time.time()
+    df_nurseCharting = pd.read_csv(file_name1)
+    df_nurseCharting.sort_values(by=['patientunitstayid', 'nursingchartoffset'], inplace=True)
+
+    # select the wanted patient
+    df_nurseCharting = df_nurseCharting[df_nurseCharting['patientunitstayid'].isin(patient_id)]
+    df_nurseCharting = df_nurseCharting[df_nurseCharting['nursingchartcelltypevallabel']=='Glasgow coma score']
+    df_nurseCharting = df_nurseCharting.rename(columns={'nursingchartoffset': 'observationoffset', 'nursingchartvalue':'Glasgow score'})
+    Glasgow = df_nurseCharting[['patientunitstayid', 'observationoffset', 'Glasgow score']].copy()
+    Glasgow.sort_values(by=['patientunitstayid', 'observationoffset'], inplace=True)
+    Glasgow['Glasgow score'] = pd.to_numeric(Glasgow['Glasgow score'], errors='coerce')
+    Glasgow_index = create_index(Glasgow)
+    end_time = time.time()
+    print(f"Glasgow Data Loaded. Time: {end_time - start_time:.2f}s")
+    return(
+        Glasgow,
+        Glasgow_index,
+    )
+
+def urine(
+    patient_id, file_name1="intakeOutput.csv"
+):
+    """
+    Function to extract urine values.
+    Parameters:
+        patient_id: the list of wanted patient id
+        file_name1: the file path of intakeOutput.csv
+    Return:
+        Urine: the dataframe of urine output data, including patientunitstayid, observationoffset, urine output
+        Urine_index: the series of the index of the first occurrence of each patient
+    Usage:
+        If we want the i th patient data (i starts from 0)
+        use urine.iloc[urine_index[i]:urine_index[i+1]]
+    """
+    print("Loading Urine Data...")
+    start_time = time.time()
+    df_intakeOutput = pd.read_csv(file_name1)
+    df_intakeOutput.sort_values(
+        by=["patientunitstayid", "intakeoutputoffset"], inplace=True
+    )
+    df_intakeOutput = df_intakeOutput[df_intakeOutput["patientunitstayid"].isin(patient_id)]
+    # extract Urine data from intakeOutput.csv
+    df_UrineOutput = df_intakeOutput[df_intakeOutput['celllabel']=='Urine']
+    df_UrineOutput = df_UrineOutput.rename(columns={'cellvaluenumeric':'UrineOutput'})
+    df_UrineOutput = df_UrineOutput.rename(columns={'intakeoutputoffset':'observationoffset'})
+    Urine = df_UrineOutput[['patientunitstayid', 'observationoffset', 'UrineOutput']].copy()
+    Urine_24 = df_UrineOutput[['patientunitstayid', 'observationoffset', 'UrineOutput']].copy()
+    Urine.sort_values(by=['patientunitstayid', 'observationoffset'], inplace=True)
+    # create first occurrence index for every patient
+    Urine_index = create_index(Urine)
+    end_time = time.time()
+    print(f"Urine Data Loaded. Time: {end_time - start_time:.2f}s")
+    return(
+        Urine,
+        Urine_index,
+    )
 
 
 def normal_heartrate(num):
