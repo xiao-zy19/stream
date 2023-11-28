@@ -348,15 +348,15 @@ def blood_pressure(
     systemicsystolic = df_vitalPeriodic[
         ["patientunitstayid", "observationoffset", "systemicsystolic"]
     ]
-    non_invasive_BP_Systolic = df_nurseCharting_noninvasive[
+    non_invasive_BP_Systolic = convert_to_float(df_nurseCharting_noninvasive[
         ["patientunitstayid", "observationoffset", "Non-Invasive BP Systolic"]
-    ]
-    invasive_BP_Systolic = df_nurseCharting_invasive[
+    ])
+    invasive_BP_Systolic = convert_to_float(df_nurseCharting_invasive[
         ["patientunitstayid", "observationoffset", "Invasive BP Systolic"]
-    ]
-    Noninvasivesystolic = df_vitalAPeriodic[
+    ])
+    Noninvasivesystolic = convert_to_float(df_vitalAPeriodic[
         ["patientunitstayid", "observationoffset", "noninvasivesystolic"]
-    ]
+    ])
 
     # create index for each variable
     systemicsystolic_index = create_index(systemicsystolic)
