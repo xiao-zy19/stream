@@ -606,13 +606,6 @@ def pao2fio2(
         ["patientunitstayid", "observationoffset", "FiO2 (%)"]
     ].copy()
 
-    def percentage_to_float(percentage):
-        try:
-            # 去掉百分号，将百分数字符串转换为浮点数
-            return float(percentage.rstrip("%"))
-        except ValueError:
-            return None
-
     # 将'FiO2'列中的百分数转换为浮点数
     resp_FiO2["FiO2"] = resp_FiO2["FiO2"].apply(lambda x: percentage_to_float(x))
     resp_FiO2_percent["FiO2 (%)"] = resp_FiO2_percent["FiO2 (%)"].apply(
@@ -679,6 +672,14 @@ def normal_temperature(num):
     # Return normal values directly
     else:
         return num
+
+
+def percentage_to_float(percentage):
+    try:
+        # 去掉百分号，将百分数字符串转换为浮点数
+        return float(percentage.rstrip("%"))
+    except ValueError:
+        return None
 
 
 def align_data(
