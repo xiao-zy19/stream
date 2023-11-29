@@ -448,6 +448,7 @@ def urine(patient_id, file_name1="intakeOutput.csv"):
     df_intakeOutput = df_intakeOutput[
         df_intakeOutput["patientunitstayid"].isin(patient_id)
     ]
+    
     # extract Urine data from intakeOutput.csv
     df_UrineOutput = df_intakeOutput[df_intakeOutput["celllabel"] == "Urine"]
     df_UrineOutput = df_UrineOutput.rename(columns={"cellvaluenumeric": "UrineOutput"})
@@ -461,6 +462,7 @@ def urine(patient_id, file_name1="intakeOutput.csv"):
         ["patientunitstayid", "observationoffset", "UrineOutput"]
     ].copy()
     Urine.sort_values(by=["patientunitstayid", "observationoffset"], inplace=True)
+    
     # create first occurrence index for every patient
     Urine_index = create_index(Urine)
     end_time = time.time()
@@ -516,17 +518,12 @@ def pao2fio2(
         df_respiratoryCharting["patientunitstayid"].isin(patient_id)
     ]
 
-    # print the shape of the wanted file
-    # print(f'nurseCharting shape: {df_nurseCharting.shape}')
-    # print(f'lab shape: {df_lab.shape}')
-    # print(f'respiratoryCharting shape: {df_respiratoryCharting.shape}')
     df_nurseCharting_SVO = df_nurseCharting[
         df_nurseCharting["nursingchartcelltypevallabel"] == "SVO2"
     ]
     df_nurseCharting_SVO = df_nurseCharting_SVO.rename(
         columns={"nursingchartoffset": "observationoffset", "nursingchartvalue": "SVO2"}
     )
-    # print(df_nurseCharting_SVO.head())
 
     # nursingchartcelltypevallabel: O2 Saturation
     df_nurseCharting_O2 = df_nurseCharting[
@@ -538,21 +535,18 @@ def pao2fio2(
             "nursingchartvalue": "O2 Saturation",
         }
     )
-    # print(df_nurseCharting_O2.head())
 
     # labname: FiO2
     df_lab_FiO2 = df_lab[df_lab["labname"] == "FiO2"]
     df_lab_FiO2 = df_lab_FiO2.rename(
         columns={"labresultoffset": "observationoffset", "labresult": "FiO2"}
     )
-    # print(df_lab_FiO2.head())
 
     # labname: paO2
     df_lab_paO2 = df_lab[df_lab["labname"] == "paO2"]
     df_lab_paO2 = df_lab_paO2.rename(
         columns={"labresultoffset": "observationoffset", "labresult": "paO2"}
     )
-    # print(df_lab_paO2.head())
 
     # respchartvaluelabel: FiO2
     df_respiratoryCharting_FiO2 = df_respiratoryCharting[
@@ -561,7 +555,6 @@ def pao2fio2(
     df_respiratoryCharting_FiO2 = df_respiratoryCharting_FiO2.rename(
         columns={"respchartoffset": "observationoffset", "respchartvalue": "FiO2"}
     )
-    # print(df_respiratoryCharting_FiO2.head())
 
     # respchartvaluelabel: FIO2 (%)
     df_respiratoryCharting_FIO2_percent = df_respiratoryCharting[
