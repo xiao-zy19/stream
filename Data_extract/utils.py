@@ -778,6 +778,9 @@ def align_data(
     kernel="C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))",
     graph=False,
 ):
+    # TODO
+    # add save func
+    # output patient id with no known samples
     """
     Summary: align data and interpolate missing values
 
@@ -868,9 +871,12 @@ def align_data(
                 column_names[0]
             ].unique()[0]
 
-            t = data_data[:, 0]
-            y = data_data[:, 1]
+            t = data_data[:, 0].astype('float64')
+            y = data_data[:, 1].astype('float64')
             t_known = t[~np.isnan(y)]
+            # skip if there is no known data
+            if t_known < 1:
+                continue
             y_known = y[~np.isnan(y)]
             t_missing = t[np.isnan(y)]
 
