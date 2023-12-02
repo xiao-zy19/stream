@@ -621,6 +621,102 @@ def pao2fio2(
     print(f"pao2/fio2 Data Loaded. Time: {end_time - start_time:.2f}s")
     return (f_FIO2, fio2_index, lab_paO2, pao2_index)
 
+def lab_result(
+    patient_id,
+    file_name1="lab.csv"
+):
+    """
+    Function to extract fio2 and pao2 values.
+
+    Parameters:
+        patient_id: the list of wanted patient id
+        file_name1: the file path of lab.csv
+    Return:
+        BUN: the dataframe of Serum urea nitrogen level output data, including patientunitstayid, observationoffset, Serum urea nitrogen level, the unit is mg/dL
+        BUN_index: the series of the index of the first occurrence of each patient
+        WBC: the dataframe of White blood cells count output data, including patientunitstayid, observationoffset, White blood cells count, the unit is K/mcL
+        WBC_index: the series of the index of the first occurrence of each patient
+        bicarbonate: the dataframe of Serum bicarbonate level output data, including patientunitstayid, observationoffset, Serum bicarbonate level, the unit is mmol/L
+        bicarbonate_index: the series of the index of the first occurrence of each patient
+        sodium: the dataframe of Sodium level output data, including patientunitstayid, observationoffset, Sodium level, the unit is mmol/L
+        sodium_index: the series of the index of the first occurrence of each patient
+        potassium: the dataframe of Potassium level output data, including patientunitstayid, observationoffset, Potassium level, the unit is mmol/L
+        potassium_index: the series of the index of the first occurrence of each patient
+        total bilirubin: the dataframe of Bilirubin level output data, including patientunitstayid, observationoffset, Bilirubin level, the unit is mg/dL
+        total bilirubin_index: the series of the index of the first occurrence of each patient
+    Usage:
+        If we want the i th patient data (i starts from 0)
+        use lab_result.iloc[lab_result_index[i]:lab_result_index[i+1]]
+    """
+    print("Loading lab Data...")
+    start_time = time.time()
+    df_lab = pd.read_csv(file_name1)
+    df_lab.sort_values(by=['patientunitstayid', 'labresultoffset'], inplace=True)
+
+# select the wanted patient
+    df_lab = df_lab[df_lab['patientunitstayid'].isin(patient_id)]
+    df_lab_BUN = df_lab[df_lab['labname']=='BUN']
+    df_lab_BUN = df_lab_BUN.rename(columns={'labresultoffset': 'observationoffset', 'labresult':'BUN'})
+
+# lab WBC x 1000
+    df_lab_WBC = df_lab[df_lab['labname']=='WBC x 1000']
+    df_lab_WBC = df_lab_WBC.rename(columns={'labresultoffset': 'observationoffset', 'labresult':'WBC x 1000'})
+
+# lab bicarbonate
+    df_lab_bicarbonate = df_lab[df_lab['labname']=='bicarbonate']
+    df_lab_bicarbonate = df_lab_bicarbonate.rename(columns={'labresultoffset': 'observationoffset', 'labresult':'bicarbonate'})
+
+# lab sodium
+    df_lab_sodium = df_lab[df_lab['labname']=='sodium']
+    df_lab_sodium = df_lab_sodium.rename(columns={'labresultoffset': 'observationoffset', 'labresult':'sodium'})
+
+# lab potassium
+    df_lab_potassium = df_lab[df_lab['labname']=='potassium']
+    df_lab_potassium = df_lab_potassium.rename(columns={'labresultoffset': 'observationoffset', 'labresult':'potassium'})
+
+# lab total bilirubin
+    df_lab_bilirubin = df_lab[df_lab['labname']=='total bilirubin']
+    df_lab_bilirubin = df_lab_bilirubin.rename(columns={'labresultoffset': 'observationoffset', 'labresult':'total bilirubin'})
+    
+    BUN = df_lab_BUN[['patientunitstayid', 'observationoffset', 'BUN']].copy()
+    WBC = df_lab_WBC[['patientunitstayid', 'observationoffset', 'WBC x 1000']].copy()
+    bicarbonate = df_lab_bicarbonate[['patientunitstayid', 'observationoffset', 'bicarbonate']].copy()
+    sodium = df_lab_sodium[['patientunitstayid', 'observationoffset', 'sodium']].copy()
+    potassium = df_lab_potassium[['patientunitstayid', 'observationoffset', 'potassium']].copy()
+    bilirubin = df_lab_bilirubin[['patientunitstayid', 'observationoffset', 'total bilirubin']].copy()
+
+# sort the lab results by patient id and observationoffset
+    BUN.sort_values(by=['patientunitstayid', 'observationoffset'], inplace=True)
+    WBC.sort_values(by=['patientunitstayid', 'observationoffset'], inplace=True)
+    bicarbonate.sort_values(by=['patientunitstayid', 'observationoffset'], inplace=True)
+    sodium.sort_values(by=['patientunitstayid', 'observationoffset'], inplace=True)
+    potassium.sort_values(by=['patientunitstayid', 'observationoffset'], inplace=True)
+    bilirubin.sort_values(by=['patientunitstayid', 'observationoffset'], inplace=True)
+
+# create index for each variable
+    BUN_index = create_index(BUN)
+    WBC_index = create_index(WBC)
+    bicarbonate_index = create_index(bicarbonate)
+    sodium_index = create_index(sodium)
+    potassium_index = create_index(potassium)
+    bilirubin_index = create_index(bilirubin)
+    end_time = time.time()
+    print(f"lab_result Data Loaded. Time: {end_time - start_time:.2f}s")
+    return(
+        BUN,
+        BUN_index,
+        WBC,
+        WBC_index,
+        bicarbonate,
+        bicarbonate_index,
+        sodium,
+        sodium_index,
+        potassium,
+        potassium_index,
+        bilirubin,
+        bilirubin_index
+    )
+    
 
 def normal_heartrate(num):
     """
@@ -682,6 +778,9 @@ def align_data(
     kernel="C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))",
     graph=False
 ):
+    # TODO
+    # add save func
+    # output patient id with no known samples
     """
     Summary: align data and interpolate missing values
 
@@ -772,9 +871,12 @@ def align_data(
                 column_names[0]
             ].unique()[0]
 
-            t = data_data[:, 0]
-            y = data_data[:, 1]
+            t = data_data[:, 0].astype('float64')
+            y = data_data[:, 1].astype('float64')
             t_known = t[~np.isnan(y)]
+            # skip if there is no known data
+            if t_known < 1:
+                continue
             y_known = y[~np.isnan(y)]
             t_missing = t[np.isnan(y)]
 
