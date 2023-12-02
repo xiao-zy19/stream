@@ -680,7 +680,7 @@ def align_data(
     patient_offset,
     data,
     kernel="C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))",
-    graph=False,
+    graph=False
 ):
     """
     Summary: align data and interpolate missing values
