@@ -862,8 +862,7 @@ def align_data(
             data_full.iloc[data_full_index[i] : data_full_index[i + 1]]
             .isnull()
             .values.any()
-            and i < 50
-        ):  # test
+        ):  # test and i < 50
             data_data = data_full.iloc[data_full_index[i] : data_full_index[i + 1]][
                 [column_names[1], column_names[2]]
             ].to_numpy()
