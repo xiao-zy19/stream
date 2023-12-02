@@ -3,7 +3,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
+import time
 from utils import patient_id_age, heart_rate, align_data
+
+
+start_time_all = time.time()
 
 # os.chdir('/Users/xiao-zy19/Desktop/Johns Hopkins/Biomedical Data Design/EICU Database/eicu-collaborative-research-database-demo-2.0.1') 
 # os.chdir('/home/en580-zxia028/EICU_demo/data')
@@ -19,7 +23,7 @@ parser = argparse.ArgumentParser(description='''
     or all at once.
 ''')
 parser.add_argument('--batch', type=int, default=0, help='batch number to process')
-parser.add_argument('--batch_size', default='1000', help='size of each batch or "all"')
+parser.add_argument('--batch_size', default='10000', help='size of each batch or "all"')
 
 args = parser.parse_args()
 
@@ -38,6 +42,7 @@ else:
     print('batch size: ', batch_size)
     print('now processing batch: ', batch, '/', len(patient_batch)-1)
 
+print(patient_batch[batch])
 # extract heart rate data
 HR, _ = heart_rate(patient_batch[batch], drop_neg=True)
 data_full, data_full_index = align_data(patient_batch[batch], patient_offset, HR, graph=False)
@@ -45,3 +50,6 @@ data_full, data_full_index = align_data(patient_batch[batch], patient_offset, HR
 folder_path = '/home/en580-zxia028/output/hr/data_full'
 file_name = 'HR_full_' + str(batch) + '.csv'
 data_full.to_csv(os.path.join(folder_path, file_name), index=False)
+
+end_time_all = time.time()
+print("Execution time: ", end_time_all - start_time_all, " seconds")
