@@ -6,6 +6,7 @@ import argparse
 from utils import patient_id_age, heart_rate, align_data
 
 os.chdir('/Users/xiao-zy19/Desktop/Johns Hopkins/Biomedical Data Design/EICU Database/eicu-collaborative-research-database-demo-2.0.1') 
+# os.chdir('/Users/xiao-zy19/Desktop/Johns Hopkins/Biomedical Data Design/EICU/eicu-collaborative-research-database-2.0')
 
 # get patient id
 patient_id, patient_age, patient_offset = patient_id_age()
