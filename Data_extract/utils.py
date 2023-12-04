@@ -882,7 +882,7 @@ def align_data(
             # kernel
             # kernel = C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))
             gp = GaussianProcessRegressor(
-                kernel=kernel, n_restarts_optimizer=1000, normalize_y=True
+                kernel=kernel, n_restarts_optimizer=100, normalize_y=True
             )
             gp.fit(t_known.reshape(-1, 1), y_known)  # fit
             y_pred, sigma = gp.predict(t_missing.reshape(-1, 1), return_std=True)
