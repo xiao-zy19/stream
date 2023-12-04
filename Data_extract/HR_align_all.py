@@ -13,6 +13,7 @@ start_time_all = time.time()
 # os.chdir('/home/en580-zxia028/EICU_demo/data')
 os.chdir('/home/en580-zxia028/EICU/data')
 folder_path = '/home/en580-zxia028/output/hr'
+# os.chdir(r'C:\Users\xiao-zy19\Desktop\Johns Hopkins\Biomedical Data Design\EICU\eicu-collaborative-research-database-2.0')
 
 # get patient id
 patient_id, patient_age, patient_offset = patient_id_age()
