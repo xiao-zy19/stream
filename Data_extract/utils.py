@@ -874,7 +874,7 @@ def align_data(
             y = data_data[:, 1].astype('float64')
             t_known = t[~np.isnan(y)]
             # skip if there is no known data
-            if t_known is None:
+            if t_known.size == 0:
                 continue
             y_known = y[~np.isnan(y)]
             t_missing = t[np.isnan(y)]
