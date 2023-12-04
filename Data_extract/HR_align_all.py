@@ -12,6 +12,7 @@ start_time_all = time.time()
 # os.chdir('/Users/xiao-zy19/Desktop/Johns Hopkins/Biomedical Data Design/EICU Database/eicu-collaborative-research-database-demo-2.0.1') 
 # os.chdir('/home/en580-zxia028/EICU_demo/data')
 os.chdir('/home/en580-zxia028/EICU/data')
+# os.chdir(r'C:\Users\xiao-zy19\Desktop\Johns Hopkins\Biomedical Data Design\EICU\eicu-collaborative-research-database-2.0')
 
 # get patient id
 patient_id, patient_age, patient_offset = patient_id_age()
@@ -23,7 +24,7 @@ parser = argparse.ArgumentParser(description='''
     or all at once.
 ''')
 parser.add_argument('--batch', type=int, default=0, help='batch number to process')
-parser.add_argument('--batch_size', default='10000', help='size of each batch or "all"')
+parser.add_argument('--batch_size', default='1000', help='size of each batch or "all"')
 
 args = parser.parse_args()
 
@@ -42,12 +43,13 @@ else:
     print('batch size: ', batch_size)
     print('now processing batch: ', batch, '/', len(patient_batch)-1)
 
-print(patient_batch[batch])
+print(patient_batch[batch].shape)
 # extract heart rate data
 HR, _ = heart_rate(patient_batch[batch], drop_neg=True)
 data_full, data_full_index = align_data(patient_batch[batch], patient_offset, HR, graph=False)
 
 folder_path = '/home/en580-zxia028/output/hr/data_full'
+# folder_path = r'C:\Users\xiao-zy19\Desktop\Output\HR'
 file_name = 'HR_full_' + str(batch) + '.csv'
 data_full.to_csv(os.path.join(folder_path, file_name), index=False)
 
