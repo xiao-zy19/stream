@@ -42,7 +42,7 @@ else:
     print('batch size: ', batch_size)
     print('now processing batch: ', batch, '/', len(patient_batch)-1)
 
-print(patient_batch[batch])
+print(patient_batch[batch].shape)
 # extract heart rate data
 HR, _ = heart_rate(patient_batch[batch], drop_neg=True)
 data_full, data_full_index = align_data(patient_batch[batch], patient_offset, HR, graph=False)
