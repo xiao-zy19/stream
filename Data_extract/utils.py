@@ -776,7 +776,7 @@ def align_data(
     patient_offset,
     data,
     kernel="C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))",
-    graph=False,
+    graph=False
 ):
     # TODO
     # add save func
@@ -862,8 +862,7 @@ def align_data(
             data_full.iloc[data_full_index[i] : data_full_index[i + 1]]
             .isnull()
             .values.any()
-            and i < 50
-        ):  # test
+        ):  # test and i < 50
             data_data = data_full.iloc[data_full_index[i] : data_full_index[i + 1]][
                 [column_names[1], column_names[2]]
             ].to_numpy()
@@ -875,7 +874,7 @@ def align_data(
             y = data_data[:, 1].astype('float64')
             t_known = t[~np.isnan(y)]
             # skip if there is no known data
-            if t_known < 1:
+            if t_known.size == 0:
                 continue
             y_known = y[~np.isnan(y)]
             t_missing = t[np.isnan(y)]
@@ -883,7 +882,7 @@ def align_data(
             # kernel
             # kernel = C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))
             gp = GaussianProcessRegressor(
-                kernel=kernel, n_restarts_optimizer=1000, normalize_y=True
+                kernel=kernel, n_restarts_optimizer=10, normalize_y=True
             )
             gp.fit(t_known.reshape(-1, 1), y_known)  # fit
             y_pred, sigma = gp.predict(t_missing.reshape(-1, 1), return_std=True)
