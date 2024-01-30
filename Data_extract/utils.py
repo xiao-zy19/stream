@@ -357,13 +357,57 @@ def blood_pressure(
     Noninvasivesystolic = df_vitalAPeriodic[
         ["patientunitstayid", "observationoffset", "noninvasivesystolic"]
     ]
-
+    
+    non_invasive_BP_Systolic.sort_values(
+        by=["patientunitstayid", "observationoffset"], inplace=True
+    )
+    
+    invasive_BP_Systolic.sort_values(
+        by=["patientunitstayid", "observationoffset"], inplace=True
+    )
+    
+    Noninvasivesystolic.sort_values(
+        by=["patientunitstayid", "observationoffset"], inplace=True
+    )
+    
+    systemicsystolic["systemicsystolic"] = systemicsystolic["systemicsystolic"].astype('float64')
+    non_invasive_BP_Systolic["Non-Invasive BP Systolic"] = non_invasive_BP_Systolic["Non-Invasive BP Systolic"].astype('float64')
+    invasive_BP_Systolic["Invasive BP Systolic"] = invasive_BP_Systolic["Invasive BP Systolic"].astype('float64')
+    Noninvasivesystolic["noninvasivesystolic"] = Noninvasivesystolic["noninvasivesystolic"].astype('float64')
+    
+    systemicsystolic_u = systemicsystolic.rename(
+        columns={
+            "systemicsystolic": "BP",
+        }
+    )
+    non_invasive_BP_Systolic_u = non_invasive_BP_Systolic.rename(
+        columns={
+            "Non-Invasive BP Systolic": "BP",
+        }
+    )
+    invasive_BP_Systolic_u = invasive_BP_Systolic.rename(
+        columns={
+            "Invasive BP Systolic": "BP",
+        }
+    )
+    Noninvasivesystolic_u = Noninvasivesystolic.rename(
+        columns={
+            "noninvasivesystolic": "BP",
+        }
+    )
+    
+    merged_df = pd.merge(systemicsystolic_u, non_invasive_BP_Systolic_u,how='outer')
+    merged_df = pd.merge(merged_df, invasive_BP_Systolic_u,how='outer')
+    blood_pressure = pd.merge(merged_df, Noninvasivesystolic_u,how='outer')
+    blood_pressure.sort_values(
+        by=["patientunitstayid", "observationoffset"], inplace=True
+    )
     # create index for each variable
     systemicsystolic_index = create_index(systemicsystolic)
     non_invasive_BP_Systolic_index = create_index(non_invasive_BP_Systolic)
     invasive_BP_Systolic_index = create_index(invasive_BP_Systolic)
     Noninvasivesystolic_index = create_index(Noninvasivesystolic)
-
+    blood_pressure_index = create_index(blood_pressure)
     end_time = time.time()
     print(f"Blood Pressure Data Loaded. Time: {end_time - start_time:.2f}s")
 
@@ -376,7 +420,126 @@ def blood_pressure(
         invasive_BP_Systolic_index,
         Noninvasivesystolic,
         Noninvasivesystolic_index,
+        blood_pressure,
+        blood_pressure_index
     )
+
+
+# def blood_pressure(
+#     patient_id,
+#     file_name1="vitalPeriodic.csv",
+#     file_name2="nurseCharting.csv",
+#     file_name3="vitalAperiodic.csv",
+# ):
+#     """
+#     Function to extract blood pressure values.
+
+#     Args:
+#         patient_id: the list of wanted patient id
+#         file_name1: the file path of vitalPeriodic.csv
+#         file_name2: the file path of nurseCharting.csv
+#         file_name3: the file path of vitalAperiodic.csv
+#     Returns:
+#         systemicsystolic: the dataframe of systolic blood pressure data, including patientunitstayid, observationoffset, systemicsystolic
+
+#         systemicsystolic_index: the series of the index of the first occurrence of each patient
+
+#         non_invasive_BP_Systolic: the dataframe of non-invasive blood pressure data, including patientunitstayid, observationoffset, Non-Invasive BP Systolic
+
+#         non_invasive_BP_Systolic_index: the series of the index of the first occurrence of each patient
+
+#         invasive_BP_Systolic: the dataframe of invasive blood pressure data, including patientunitstayid, observationoffset, Invasive BP Systolic
+
+#         invasive_BP_Systolic_index: the series of the index of the first occurrence of each patient
+
+#         Noninvasivesystolic: the dataframe of non-invasive blood pressure data, including patientunitstayid, observationoffset, noninvasivesystolic
+
+#         Noninvasivesystolic_index: the series of the index of the first occurrence of each patient
+#     """
+#     print("Loading Blood Pressure Data...")
+#     start_time = time.time()
+#     # Load data
+#     df_vitalPeriodic = pd.read_csv(file_name1)
+#     df_vitalPeriodic.sort_values(
+#         by=["patientunitstayid", "observationoffset"], inplace=True
+#     )
+
+#     df_nurseCharting = pd.read_csv(file_name2)
+#     df_nurseCharting.sort_values(
+#         by=["patientunitstayid", "nursingchartoffset"], inplace=True
+#     )
+
+#     df_vitalAPeriodic = pd.read_csv(file_name3)
+#     df_vitalAPeriodic.sort_values(
+#         by=["patientunitstayid", "observationoffset"], inplace=True
+#     )
+
+#     # select wanted patient
+#     df_vitalPeriodic = df_vitalPeriodic[
+#         df_vitalPeriodic["patientunitstayid"].isin(patient_id)
+#     ]
+#     df_nurseCharting = df_nurseCharting[
+#         df_nurseCharting["patientunitstayid"].isin(patient_id)
+#     ]
+#     df_vitalAPeriodic = df_vitalAPeriodic[
+#         df_vitalAPeriodic["patientunitstayid"].isin(patient_id)
+#     ]
+
+#     # nursingchartcelltypevallabel Non-Invasive BP Systolic
+#     df_nurseCharting_noninvasive = df_nurseCharting[
+#         df_nurseCharting["nursingchartcelltypevalname"] == "Non-Invasive BP Systolic"
+#     ]
+#     df_nurseCharting_noninvasive = df_nurseCharting_noninvasive.rename(
+#         columns={
+#             "nursingchartoffset": "observationoffset",
+#             "nursingchartvalue": "Non-Invasive BP Systolic",
+#         }
+#     )
+
+#     # nursingchartcelltypevallabel Invasive BP Systolic
+#     df_nurseCharting_invasive = df_nurseCharting[
+#         df_nurseCharting["nursingchartcelltypevalname"] == "Invasive BP Systolic"
+#     ]
+#     df_nurseCharting_invasive = df_nurseCharting_invasive.rename(
+#         columns={
+#             "nursingchartoffset": "observationoffset",
+#             "nursingchartvalue": "Invasive BP Systolic",
+#         }
+#     )
+
+#     # extract systolics from vitalPeriodic, nurseCharting & vitalAPeriodic
+#     systemicsystolic = df_vitalPeriodic[
+#         ["patientunitstayid", "observationoffset", "systemicsystolic"]
+#     ]
+#     non_invasive_BP_Systolic = df_nurseCharting_noninvasive[
+#         ["patientunitstayid", "observationoffset", "Non-Invasive BP Systolic"]
+#     ]
+#     invasive_BP_Systolic = df_nurseCharting_invasive[
+#         ["patientunitstayid", "observationoffset", "Invasive BP Systolic"]
+#     ]
+#     Noninvasivesystolic = df_vitalAPeriodic[
+#         ["patientunitstayid", "observationoffset", "noninvasivesystolic"]
+#     ]
+
+#     # create index for each variable
+#     systemicsystolic_index = create_index(systemicsystolic)
+#     non_invasive_BP_Systolic_index = create_index(non_invasive_BP_Systolic)
+#     invasive_BP_Systolic_index = create_index(invasive_BP_Systolic)
+#     Noninvasivesystolic_index = create_index(Noninvasivesystolic)
+
+#     end_time = time.time()
+#     print(f"Blood Pressure Data Loaded. Time: {end_time - start_time:.2f}s")
+
+#     return (
+#         systemicsystolic,
+#         systemicsystolic_index,
+#         non_invasive_BP_Systolic,
+#         non_invasive_BP_Systolic_index,
+#         invasive_BP_Systolic,
+#         invasive_BP_Systolic_index,
+#         Noninvasivesystolic,
+#         Noninvasivesystolic_index,
+#     )
 
 
 def glasgow(patient_id, file_name1="nurseCharting.csv"):
