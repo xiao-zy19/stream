@@ -134,20 +134,27 @@ def heart_rate(
     print("Loading Heart Rate Data...")
     start_time = time.time()
     # Load data
-    df_vitalPeriodic = pd.read_csv(file_name1)
+    cols_to_read_v = ['patientunitstayid', 'observationoffset', 'heartrate']
+    df_vitalPeriodic = pd.read_csv(file_name1, usecols=cols_to_read_v)
     df_vitalPeriodic.sort_values(
         by=["patientunitstayid", "observationoffset"], inplace=True
     )
-
-    df_nurseCharting = pd.read_csv(file_name2)
-    df_nurseCharting.sort_values(
-        by=["patientunitstayid", "nursingchartoffset"], inplace=True
-    )
-
+    
     # select wanted patient
     df_vitalPeriodic = df_vitalPeriodic[
         df_vitalPeriodic["patientunitstayid"].isin(patient_id)
     ]
+    HR_v = df_vitalPeriodic[["patientunitstayid", "observationoffset", "heartrate"]]
+
+    # memory deallocation
+    del df_vitalPeriodic
+
+    cols_to_read_n = ['patientunitstayid', 'nursingchartoffset', 'nursingchartcelltypevallabel', 'nursingchartvalue']
+    df_nurseCharting = pd.read_csv(file_name2, usecols=cols_to_read_n)
+    df_nurseCharting.sort_values(
+        by=["patientunitstayid", "nursingchartoffset"], inplace=True
+    )
+
     df_nurseCharting = df_nurseCharting[
         df_nurseCharting["patientunitstayid"].isin(patient_id)
     ]
@@ -165,10 +172,13 @@ def heart_rate(
         }
     )
 
-    # extract heart rate from df_vitalPeriodic & df_nurseCharting
-    HR_v = df_vitalPeriodic[["patientunitstayid", "observationoffset", "heartrate"]]
+    # extract heart rate
     HR_n = df_nurseCharting[["patientunitstayid", "observationoffset", "heartrate"]]
     HR = pd.concat([HR_v, HR_n]).astype(float)
+
+    # memory deallocation
+    del df_nurseCharting, HR_v, HR_n
+
     HR.sort_values(by=["patientunitstayid", "observationoffset"], inplace=True)
 
     # delete negative observationoffset
@@ -206,23 +216,28 @@ def temp(patient_id, file_name1="vitalPeriodic.csv", file_name2="nurseCharting.c
     start_time = time.time()
 
     # import vitalPeriodic.csv & nurseCharting.csv
-    df_vitalPeriodic = pd.read_csv(file_name1)
+    cols_to_read_v = ['patientunitstayid', 'observationoffset', 'temperature']
+    df_vitalPeriodic = pd.read_csv(file_name1, usecols=cols_to_read_v)
     df_vitalPeriodic.sort_values(
         by=["patientunitstayid", "observationoffset"], inplace=True
     )
-    df_nurseCharting = pd.read_csv(file_name2)
-    df_nurseCharting.sort_values(
-        by=["patientunitstayid", "nursingchartoffset"], inplace=True
-    )
-
-    # select the wanted patient
     df_vitalPeriodic = df_vitalPeriodic[
         df_vitalPeriodic["patientunitstayid"].isin(patient_id)
     ]
+    Temp_v = df_vitalPeriodic[["patientunitstayid", "observationoffset", "temperature"]]
+    
+    # memory deallocation
+    del df_vitalPeriodic
+    
+    cols_to_read_n = ['patientunitstayid', 'nursingchartoffset', 'nursingchartcelltypevalname', 'nursingchartvalue']
+    df_nurseCharting = pd.read_csv(file_name2, usecols=cols_to_read_n)
+    df_nurseCharting.sort_values(
+        by=["patientunitstayid", "nursingchartoffset"], inplace=True
+    )   
     df_nurseCharting = df_nurseCharting[
         df_nurseCharting["patientunitstayid"].isin(patient_id)
     ]
-
+    
     # nursingchartcelltypevallabel Temperature
     df_nurseCharting = df_nurseCharting[
         df_nurseCharting["nursingchartcelltypevalname"] == "Temperature (C)"
@@ -233,10 +248,10 @@ def temp(patient_id, file_name1="vitalPeriodic.csv", file_name2="nurseCharting.c
             "nursingchartvalue": "temperature",
         }
     )
-
-    # extract temperature from df_vitalPeriodic & df_nurseCharting
-    Temp_v = df_vitalPeriodic[["patientunitstayid", "observationoffset", "temperature"]]
     Temp_n = df_nurseCharting[["patientunitstayid", "observationoffset", "temperature"]]
+    
+    # memory deallocation
+    del df_nurseCharting
 
     # delete the rows with string values
     Temp_n = Temp_n[
@@ -244,6 +259,9 @@ def temp(patient_id, file_name1="vitalPeriodic.csv", file_name2="nurseCharting.c
     ]
 
     Temp = pd.concat([Temp_v, Temp_n]).astype(float)
+    
+    # memory deallocation
+    del Temp_v, Temp_n
 
     # drop null values
     Temp.dropna(inplace=True)
@@ -262,6 +280,168 @@ def temp(patient_id, file_name1="vitalPeriodic.csv", file_name2="nurseCharting.c
     return Temp, Temp_index
 
 
+# def blood_pressure(
+#     patient_id,
+#     file_name1="vitalPeriodic.csv",
+#     file_name2="nurseCharting.csv",
+#     file_name3="vitalAperiodic.csv",
+# ):
+#     """
+#     Function to extract blood pressure values.
+
+#     Args:
+#         patient_id: the list of wanted patient id
+#         file_name1: the file path of vitalPeriodic.csv
+#         file_name2: the file path of nurseCharting.csv
+#         file_name3: the file path of vitalAperiodic.csv
+#     Returns:
+#         systemicsystolic: the dataframe of systolic blood pressure data, including patientunitstayid, observationoffset, systemicsystolic
+
+#         systemicsystolic_index: the series of the index of the first occurrence of each patient
+
+#         non_invasive_BP_Systolic: the dataframe of non-invasive blood pressure data, including patientunitstayid, observationoffset, Non-Invasive BP Systolic
+
+#         non_invasive_BP_Systolic_index: the series of the index of the first occurrence of each patient
+
+#         invasive_BP_Systolic: the dataframe of invasive blood pressure data, including patientunitstayid, observationoffset, Invasive BP Systolic
+
+#         invasive_BP_Systolic_index: the series of the index of the first occurrence of each patient
+
+#         Noninvasivesystolic: the dataframe of non-invasive blood pressure data, including patientunitstayid, observationoffset, noninvasivesystolic
+
+#         Noninvasivesystolic_index: the series of the index of the first occurrence of each patient
+#     """
+#     print("Loading Blood Pressure Data...")
+#     start_time = time.time()
+#     # Load data
+#     df_vitalPeriodic = pd.read_csv(file_name1)
+#     df_vitalPeriodic.sort_values(
+#         by=["patientunitstayid", "observationoffset"], inplace=True
+#     )
+
+#     df_nurseCharting = pd.read_csv(file_name2)
+#     df_nurseCharting.sort_values(
+#         by=["patientunitstayid", "nursingchartoffset"], inplace=True
+#     )
+
+#     df_vitalAPeriodic = pd.read_csv(file_name3)
+#     df_vitalAPeriodic.sort_values(
+#         by=["patientunitstayid", "observationoffset"], inplace=True
+#     )
+
+#     # select wanted patient
+#     df_vitalPeriodic = df_vitalPeriodic[
+#         df_vitalPeriodic["patientunitstayid"].isin(patient_id)
+#     ]
+#     df_nurseCharting = df_nurseCharting[
+#         df_nurseCharting["patientunitstayid"].isin(patient_id)
+#     ]
+#     df_vitalAPeriodic = df_vitalAPeriodic[
+#         df_vitalAPeriodic["patientunitstayid"].isin(patient_id)
+#     ]
+
+#     # nursingchartcelltypevallabel Non-Invasive BP Systolic
+#     df_nurseCharting_noninvasive = df_nurseCharting[
+#         df_nurseCharting["nursingchartcelltypevalname"] == "Non-Invasive BP Systolic"
+#     ]
+#     df_nurseCharting_noninvasive = df_nurseCharting_noninvasive.rename(
+#         columns={
+#             "nursingchartoffset": "observationoffset",
+#             "nursingchartvalue": "Non-Invasive BP Systolic",
+#         }
+#     )
+
+#     # nursingchartcelltypevallabel Invasive BP Systolic
+#     df_nurseCharting_invasive = df_nurseCharting[
+#         df_nurseCharting["nursingchartcelltypevalname"] == "Invasive BP Systolic"
+#     ]
+#     df_nurseCharting_invasive = df_nurseCharting_invasive.rename(
+#         columns={
+#             "nursingchartoffset": "observationoffset",
+#             "nursingchartvalue": "Invasive BP Systolic",
+#         }
+#     )
+
+#     # extract systolics from vitalPeriodic, nurseCharting & vitalAPeriodic
+#     systemicsystolic = df_vitalPeriodic[
+#         ["patientunitstayid", "observationoffset", "systemicsystolic"]
+#     ]
+#     non_invasive_BP_Systolic = df_nurseCharting_noninvasive[
+#         ["patientunitstayid", "observationoffset", "Non-Invasive BP Systolic"]
+#     ]
+#     invasive_BP_Systolic = df_nurseCharting_invasive[
+#         ["patientunitstayid", "observationoffset", "Invasive BP Systolic"]
+#     ]
+#     Noninvasivesystolic = df_vitalAPeriodic[
+#         ["patientunitstayid", "observationoffset", "noninvasivesystolic"]
+#     ]
+    
+#     non_invasive_BP_Systolic.sort_values(
+#         by=["patientunitstayid", "observationoffset"], inplace=True
+#     )
+    
+#     invasive_BP_Systolic.sort_values(
+#         by=["patientunitstayid", "observationoffset"], inplace=True
+#     )
+    
+#     Noninvasivesystolic.sort_values(
+#         by=["patientunitstayid", "observationoffset"], inplace=True
+#     )
+    
+#     systemicsystolic["systemicsystolic"] = systemicsystolic["systemicsystolic"].astype('float64')
+#     non_invasive_BP_Systolic["Non-Invasive BP Systolic"] = non_invasive_BP_Systolic["Non-Invasive BP Systolic"].astype('float64')
+#     invasive_BP_Systolic["Invasive BP Systolic"] = invasive_BP_Systolic["Invasive BP Systolic"].astype('float64')
+#     Noninvasivesystolic["noninvasivesystolic"] = Noninvasivesystolic["noninvasivesystolic"].astype('float64')
+    
+#     systemicsystolic_u = systemicsystolic.rename(
+#         columns={
+#             "systemicsystolic": "BP",
+#         }
+#     )
+#     non_invasive_BP_Systolic_u = non_invasive_BP_Systolic.rename(
+#         columns={
+#             "Non-Invasive BP Systolic": "BP",
+#         }
+#     )
+#     invasive_BP_Systolic_u = invasive_BP_Systolic.rename(
+#         columns={
+#             "Invasive BP Systolic": "BP",
+#         }
+#     )
+#     Noninvasivesystolic_u = Noninvasivesystolic.rename(
+#         columns={
+#             "noninvasivesystolic": "BP",
+#         }
+#     )
+    
+#     merged_df = pd.merge(systemicsystolic_u, non_invasive_BP_Systolic_u,how='outer')
+#     merged_df = pd.merge(merged_df, invasive_BP_Systolic_u,how='outer')
+#     blood_pressure = pd.merge(merged_df, Noninvasivesystolic_u,how='outer')
+#     blood_pressure.sort_values(
+#         by=["patientunitstayid", "observationoffset"], inplace=True
+#     )
+#     # create index for each variable
+#     systemicsystolic_index = create_index(systemicsystolic)
+#     non_invasive_BP_Systolic_index = create_index(non_invasive_BP_Systolic)
+#     invasive_BP_Systolic_index = create_index(invasive_BP_Systolic)
+#     Noninvasivesystolic_index = create_index(Noninvasivesystolic)
+#     blood_pressure_index = create_index(blood_pressure)
+#     end_time = time.time()
+#     print(f"Blood Pressure Data Loaded. Time: {end_time - start_time:.2f}s")
+
+#     return (
+#         systemicsystolic,
+#         systemicsystolic_index,
+#         non_invasive_BP_Systolic,
+#         non_invasive_BP_Systolic_index,
+#         invasive_BP_Systolic,
+#         invasive_BP_Systolic_index,
+#         Noninvasivesystolic,
+#         Noninvasivesystolic_index,
+#         blood_pressure,
+#         blood_pressure_index
+#     )
+    
 def blood_pressure(
     patient_id,
     file_name1="vitalPeriodic.csv",
@@ -296,67 +476,83 @@ def blood_pressure(
     print("Loading Blood Pressure Data...")
     start_time = time.time()
     # Load data
-    df_vitalPeriodic = pd.read_csv(file_name1)
+    cols_to_read_v1 = ['patientunitstayid', 'observationoffset', 'systemicsystolic']
+    df_vitalPeriodic = pd.read_csv(file_name1, usecols=cols_to_read_v1)
     df_vitalPeriodic.sort_values(
         by=["patientunitstayid", "observationoffset"], inplace=True
     )
-
-    df_nurseCharting = pd.read_csv(file_name2)
-    df_nurseCharting.sort_values(
-        by=["patientunitstayid", "nursingchartoffset"], inplace=True
-    )
-
-    df_vitalAPeriodic = pd.read_csv(file_name3)
-    df_vitalAPeriodic.sort_values(
-        by=["patientunitstayid", "observationoffset"], inplace=True
-    )
-
-    # select wanted patient
     df_vitalPeriodic = df_vitalPeriodic[
         df_vitalPeriodic["patientunitstayid"].isin(patient_id)
     ]
+    systemicsystolic = df_vitalPeriodic[
+        ["patientunitstayid", "observationoffset", "systemicsystolic"]
+    ].copy()
+    # memory deallocation
+    del df_vitalPeriodic
+
+    cols_to_read_n = ['patientunitstayid', 'nursingchartoffset', 'nursingchartcelltypevalname', 'nursingchartvalue']
+    df_nurseCharting = pd.read_csv(file_name2, usecols=cols_to_read_n)
+    df_nurseCharting.sort_values(
+        by=["patientunitstayid", "nursingchartoffset"], inplace=True
+    )
     df_nurseCharting = df_nurseCharting[
         df_nurseCharting["patientunitstayid"].isin(patient_id)
     ]
-    df_vitalAPeriodic = df_vitalAPeriodic[
-        df_vitalAPeriodic["patientunitstayid"].isin(patient_id)
-    ]
-
-    # nursingchartcelltypevallabel Non-Invasive BP Systolic
     df_nurseCharting_noninvasive = df_nurseCharting[
         df_nurseCharting["nursingchartcelltypevalname"] == "Non-Invasive BP Systolic"
-    ]
+    ].copy()
     df_nurseCharting_noninvasive = df_nurseCharting_noninvasive.rename(
         columns={
             "nursingchartoffset": "observationoffset",
             "nursingchartvalue": "Non-Invasive BP Systolic",
         }
     )
-
-    # nursingchartcelltypevallabel Invasive BP Systolic
     df_nurseCharting_invasive = df_nurseCharting[
         df_nurseCharting["nursingchartcelltypevalname"] == "Invasive BP Systolic"
-    ]
+    ].copy()
+
+    # memory deallocation
+    del df_nurseCharting
+
+    non_invasive_BP_Systolic = df_nurseCharting_noninvasive[
+        ["patientunitstayid", "observationoffset", "Non-Invasive BP Systolic"]
+    ].copy()
+
     df_nurseCharting_invasive = df_nurseCharting_invasive.rename(
         columns={
             "nursingchartoffset": "observationoffset",
             "nursingchartvalue": "Invasive BP Systolic",
         }
     )
-
-    # extract systolics from vitalPeriodic, nurseCharting & vitalAPeriodic
-    systemicsystolic = df_vitalPeriodic[
-        ["patientunitstayid", "observationoffset", "systemicsystolic"]
-    ]
-    non_invasive_BP_Systolic = df_nurseCharting_noninvasive[
-        ["patientunitstayid", "observationoffset", "Non-Invasive BP Systolic"]
-    ]
-    invasive_BP_Systolic = df_nurseCharting_invasive[
-        ["patientunitstayid", "observationoffset", "Invasive BP Systolic"]
+    cols_to_read_v3 = ['patientunitstayid', 'observationoffset', 'noninvasivesystolic']
+    df_vitalAPeriodic = pd.read_csv(file_name3, usecols=cols_to_read_v3)
+    df_vitalAPeriodic.sort_values(
+        by=["patientunitstayid", "observationoffset"], inplace=True
+    )
+    df_vitalAPeriodic = df_vitalAPeriodic[
+        df_vitalAPeriodic["patientunitstayid"].isin(patient_id)
     ]
     Noninvasivesystolic = df_vitalAPeriodic[
         ["patientunitstayid", "observationoffset", "noninvasivesystolic"]
-    ]
+    ].copy()
+    Noninvasivesystolic.sort_values(
+        by=["patientunitstayid", "observationoffset"], inplace=True
+    )
+    Noninvasivesystolic["noninvasivesystolic"] = Noninvasivesystolic["noninvasivesystolic"].astype('float64')
+    Noninvasivesystolic_u = Noninvasivesystolic.rename(
+        columns={
+            "noninvasivesystolic": "BP",
+        }
+    ).copy()
+
+    # memory deallocation
+    del df_vitalAPeriodic
+
+    # extract systolics from vitalPeriodic, nurseCharting & vitalAPeriodic
+    
+    invasive_BP_Systolic = df_nurseCharting_invasive[
+        ["patientunitstayid", "observationoffset", "Invasive BP Systolic"]
+    ].copy()
     
     non_invasive_BP_Systolic.sort_values(
         by=["patientunitstayid", "observationoffset"], inplace=True
@@ -366,35 +562,26 @@ def blood_pressure(
         by=["patientunitstayid", "observationoffset"], inplace=True
     )
     
-    Noninvasivesystolic.sort_values(
-        by=["patientunitstayid", "observationoffset"], inplace=True
-    )
-    
     systemicsystolic["systemicsystolic"] = systemicsystolic["systemicsystolic"].astype('float64')
     non_invasive_BP_Systolic["Non-Invasive BP Systolic"] = non_invasive_BP_Systolic["Non-Invasive BP Systolic"].astype('float64')
     invasive_BP_Systolic["Invasive BP Systolic"] = invasive_BP_Systolic["Invasive BP Systolic"].astype('float64')
-    Noninvasivesystolic["noninvasivesystolic"] = Noninvasivesystolic["noninvasivesystolic"].astype('float64')
+    
     
     systemicsystolic_u = systemicsystolic.rename(
         columns={
             "systemicsystolic": "BP",
         }
-    )
+    ).copy()
     non_invasive_BP_Systolic_u = non_invasive_BP_Systolic.rename(
         columns={
             "Non-Invasive BP Systolic": "BP",
         }
-    )
+    ).copy()
     invasive_BP_Systolic_u = invasive_BP_Systolic.rename(
         columns={
             "Invasive BP Systolic": "BP",
         }
-    )
-    Noninvasivesystolic_u = Noninvasivesystolic.rename(
-        columns={
-            "noninvasivesystolic": "BP",
-        }
-    )
+    ).copy()
     
     merged_df = pd.merge(systemicsystolic_u, non_invasive_BP_Systolic_u,how='outer')
     merged_df = pd.merge(merged_df, invasive_BP_Systolic_u,how='outer')
@@ -422,7 +609,7 @@ def blood_pressure(
         Noninvasivesystolic_index,
         blood_pressure,
         blood_pressure_index
-    )
+    )    
 
 
 # def blood_pressure(
@@ -557,7 +744,9 @@ def glasgow(patient_id, file_name1="nurseCharting.csv"):
     """
     print("Loading Glasgow Data...")
     start_time = time.time()
-    df_nurseCharting = pd.read_csv(file_name1)
+    
+    cols_to_read = ['patientunitstayid', 'nursingchartoffset', 'nursingchartcelltypevallabel', 'nursingchartvalue']
+    df_nurseCharting = pd.read_csv(file_name1, usecols=cols_to_read)
     df_nurseCharting.sort_values(
         by=["patientunitstayid", "nursingchartoffset"], inplace=True
     )
@@ -578,6 +767,10 @@ def glasgow(patient_id, file_name1="nurseCharting.csv"):
     Glasgow = df_nurseCharting[
         ["patientunitstayid", "observationoffset", "Glasgow score"]
     ].copy()
+    
+    # memory deallocation
+    del df_nurseCharting
+    
     Glasgow.sort_values(by=["patientunitstayid", "observationoffset"], inplace=True)
     Glasgow["Glasgow score"] = pd.to_numeric(Glasgow["Glasgow score"], errors="coerce")
     Glasgow_index = create_index(Glasgow)
@@ -604,7 +797,9 @@ def urine(patient_id, file_name1="intakeOutput.csv"):
     """
     print("Loading Urine Data...")
     start_time = time.time()
-    df_intakeOutput = pd.read_csv(file_name1)
+    
+    cols_to_read = ['patientunitstayid', 'intakeoutputoffset', 'celllabel', 'cellvaluenumeric']
+    df_intakeOutput = pd.read_csv(file_name1, usecols=cols_to_read)
     df_intakeOutput.sort_values(
         by=["patientunitstayid", "intakeoutputoffset"], inplace=True
     )
@@ -614,6 +809,10 @@ def urine(patient_id, file_name1="intakeOutput.csv"):
     
     # extract Urine data from intakeOutput.csv
     df_UrineOutput = df_intakeOutput[df_intakeOutput["celllabel"] == "Urine"]
+    
+    # memory deallocation
+    del df_intakeOutput
+    
     df_UrineOutput = df_UrineOutput.rename(columns={"cellvaluenumeric": "UrineOutput"})
     df_UrineOutput = df_UrineOutput.rename(
         columns={"intakeoutputoffset": "observationoffset"}
@@ -661,12 +860,20 @@ def pao2fio2(
     """
     print("Loading pao2/fio2 Data...")
     start_time = time.time()
-    df_nurseCharting = pd.read_csv(file_name1)
+    
+    nurse_cols = ['patientunitstayid', 'nursingchartoffset', 'nursingchartcelltypevallabel', 'nursingchartvalue']
+    lab_cols = ['patientunitstayid', 'labresultoffset', 'labname', 'labresult']
+    resp_cols = ['patientunitstayid', 'respchartoffset', 'respchartvaluelabel', 'respchartvalue']
+    
+    df_nurseCharting = pd.read_csv(file_name1, usecols=nurse_cols)
     df_nurseCharting.sort_values(
         by=["patientunitstayid", "nursingchartoffset"], inplace=True
     )
-    df_lab = pd.read_csv(file_name2)
+    
+    df_lab = pd.read_csv(file_name2, usecols=lab_cols)
     df_lab.sort_values(by=["patientunitstayid", "labresultoffset"], inplace=True)
+    
+    df_respiratoryCharting = pd.read_csv(file_name3, usecols=resp_cols)
     df_respiratoryCharting = pd.read_csv(file_name3)
     df_respiratoryCharting.sort_values(
         by=["patientunitstayid", "respchartoffset"], inplace=True
@@ -813,7 +1020,9 @@ def lab_result(
     """
     print("Loading lab Data...")
     start_time = time.time()
-    df_lab = pd.read_csv(file_name1)
+    
+    cols_to_read = ['patientunitstayid', 'labresultoffset', 'labname', 'labresult']
+    df_lab = pd.read_csv(file_name1, usecols=cols_to_read)
     df_lab.sort_values(by=['patientunitstayid', 'labresultoffset'], inplace=True)
 
 # select the wanted patient
@@ -926,11 +1135,20 @@ def normal_temperature(num):
         return num
 
 
-def percentage_to_float(percentage):
-    try:
-        # 去掉百分号，将百分数字符串转换为浮点数
-        return float(percentage.rstrip("%"))
-    except ValueError:
+def percentage_to_float(value):
+    # Check if the value is a string and contains a percentage sign
+    if isinstance(value, str) and "%" in value:
+        try:
+            # Remove the percentage sign and convert to float
+            return float(value.rstrip("%"))
+        except ValueError:
+            # Return None if conversion fails
+            return None
+    # If the value is already a number (float or int), return it directly
+    elif isinstance(value, (float, int)):
+        return value
+    # Return None for other types
+    else:
         return None
 
 
