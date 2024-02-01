@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
 import time
-from utils import patient_id_age, heart_rate, align_data, temp
+from utils import patient_id_age, align_data, temp
 
 
 start_time_all = time.time()
