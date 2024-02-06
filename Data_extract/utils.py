@@ -1043,7 +1043,7 @@ def align_data(
     graph=False
 ):
     # TODO
-    # add save func
+    # add save func / save manually after align
     # output patient id with no known samples
     """
     Summary: align data and interpolate missing values
@@ -1068,6 +1068,7 @@ def align_data(
     column_names = data.columns.tolist()
     print(f"column names: {column_names}")
 
+    # select the wanted patient
     data = data[data[column_names[0]].isin(patient_batch)]
     patient_offset = patient_offset[patient_offset[column_names[0]].isin(patient_batch)]
 
@@ -1100,15 +1101,17 @@ def align_data(
     data_hour_cleaned = data_hour_cleaned[
         data_hour_cleaned[column_names[1]] <= data_hour_cleaned["unitdischargeoffset"]
     ]
-    data_hour = data_hour_cleaned.drop(["unitdischargeoffset"], axis=1)
+    # data_hour = data_hour_cleaned.drop(["unitdischargeoffset"], axis=1)
     # print(data_hour)
+    data_hour = data_hour_cleaned.copy()
 
     max_offset_per_patient = data_hour.groupby(column_names[0]).max().reset_index()
 
     complete_ranges = []
     for index, row in max_offset_per_patient.iterrows():
         patient_id = row[column_names[0]]
-        max_offset = row[column_names[1]]
+        # max_offset = row[column_names[1]]
+        max_offset = row["unitdischargeoffset"]
         complete_range = pd.DataFrame(
             {column_names[0]: patient_id, column_names[1]: range(int(max_offset) + 1)}
         )
@@ -1118,8 +1121,11 @@ def align_data(
     data_full = pd.merge(
         complete_ranges, data_hour, on=[column_names[0], column_names[1]], how="left"
     )
+    data_full.drop(["unitdischargeoffset"], axis=1, inplace=True)
     data_full_index = create_index(data_full)
     # print(data_full_index)
+    
+    
 
     for i in range(len(data_full_index) - 1):
         if (
