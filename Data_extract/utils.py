@@ -1190,3 +1190,18 @@ def align_data(
     print(f"Gaussian Process Finished!")
 
     return data_full, data_full_index
+
+def flatten(df):
+    """
+    Summary: Function to flatten the dataframe.
+    Args:
+        df: the dataframe of data, including patientunitstayid, observationoffset, and features
+
+    Returns:
+        df_flat: the dataframe of flattened data
+    """
+    df = df.set_index(['patientunitstayid', 'observationoffset'])
+    df_flat = df.unstack(level='observationoffset')
+    df_flat.columns = ['{}_hour{}'.format(*col) for col in df_flat.columns]
+    df_flat = df_flat.reset_index()
+    return df_flat
