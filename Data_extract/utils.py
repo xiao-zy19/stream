@@ -1205,3 +1205,499 @@ def flatten(df):
     df_flat.columns = ['{}_hour{}'.format(*col) for col in df_flat.columns]
     df_flat = df_flat.reset_index()
     return df_flat
+
+
+def extract_data_optional(
+    patient_batch,
+    patient_offset,
+    data,
+    time_length=1,
+    max_min_var=False
+):
+    # TODO
+    # add save func / save manually after align
+    # output patient id with no known samples
+    """
+    Summary: align data and interpolate missing values
+
+    Args:
+        patient_batch: the list of wanted patient id, used to split data
+        patient_offset: the dataframe of patient offset data, including patientunitstayid, unitdischargeoffset
+        data: the dataframe of data, including patientunitstayid, observationoffset, value
+        kernel: the self-defined kernel function for Gaussian Process Regressor
+        align: decide whether align the data
+        time_length: decide how long we sample
+        max_min_var: decide whether we calculate the max, min and the var
+
+    Returns:
+        data_full: the dataframe of aligned and interpolated data, including patientunitstayid, observationoffset, value
+        data_full_index: the series of the index of the first occurrence of each patient
+    """
+
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, WhiteKernel
+
+    # turn kernel string to kernel function
+    kernel = eval(kernel)
+
+    column_names = data.columns.tolist()
+    print(f"column names: {column_names}")
+
+    # select the wanted patient
+    data = data[data[column_names[0]].isin(patient_batch)]
+    patient_offset = patient_offset[patient_offset[column_names[0]].isin(patient_batch)]
+
+    # transform patient_offset to hours
+    patient_hours = patient_offset.copy().reset_index(drop=True)
+    patient_hours["unitdischargeoffset"] = np.floor(
+        patient_hours["unitdischargeoffset"] / (60*time_length)
+    ).astype(int)
+
+    # get unique patient ids in data
+    unique_data_patient_ids = data["patientunitstayid"].unique()
+    patient_hours = patient_hours[
+        patient_hours["patientunitstayid"].isin(unique_data_patient_ids)
+    ].reset_index(drop=True)
+
+    # change observationoffset to hours
+    data_hour_buf = data.copy().reset_index(drop=True)
+    # data_hour_buf["observationoffset"] = np.floor(data_hour_buf["observationoffset"]/60).astype(int)
+    data_hour_buf[column_names[1]] = np.floor(
+        data_hour_buf[column_names[1]] / (60*time_length)
+    ).astype(int)
+    
+    data_hour_buf_mean = data_hour_buf.groupby(
+        [column_names[0], column_names[1]], as_index=False
+    )[column_names[2]].mean()
+    
+    column_name = data_hour_buf_mean.columns[2]
+    new_column_name = column_name + '_mean'
+    data_hour_buf_max = data_hour_buf_mean.rename(columns={column_name: new_column_name})
+    
+    if(max_min_var):
+        data_hour_buf_max = data_hour_buf.groupby([column_names[0], column_names[1]], as_index=False)[column_names[2]].max()
+        column_name = data_hour_buf_max.columns[2]
+        new_column_name = column_name + '_max'
+        data_hour_buf_max = data_hour_buf_max.rename(columns={column_name: new_column_name})
+
+        data_hour_buf_min = data_hour_buf.groupby([column_names[0], column_names[1]], as_index=False)[column_names[2]].min()
+        column_name = data_hour_buf_min.columns[2]
+        new_column_name = column_name + '_min'
+        data_hour_buf_max = data_hour_buf_min.rename(columns={column_name: new_column_name})
+        
+
+        data_hour_buf_var = data_hour_buf.groupby([column_names[0], column_names[1]], as_index=False)[column_names[2]].var()
+        column_name = data_hour_buf_var.columns[2]
+        new_column_name = column_name + '_var'
+        data_hour_buf_max = data_hour_buf_var.rename(columns={column_name: new_column_name})
+        data_hour_buf_var[new_column_name] = data_hour_buf_var[new_column_name].fillna(0)
+        
+        data_hour_buf = pd.merge(
+            data_hour_buf_mean,data_hour_buf_max, on=[column_names[0], column_names[1]], how="left"
+        )
+        data_hour_buf = pd.merge(
+            data_hour_buf,data_hour_buf_min, on=[column_names[0], column_names[1]], how="left"
+        )
+        data_hour_buf = pd.merge(
+            data_hour_buf,data_hour_buf_var, on=[column_names[0], column_names[1]], how="left"
+        )
+    else:
+        data_hour_buf = data_hour_buf_mean.copy()
+    
+    #data_hour_buf_mean.sort_values(by=[column_names[0], column_names[1]], inplace=True)
+
+    data_hour_cleaned = pd.merge(
+        data_hour_buf, patient_hours, on=column_names[0], how="left"
+    )
+    data_hour_cleaned = data_hour_cleaned[
+        data_hour_cleaned[column_names[1]] <= data_hour_cleaned["unitdischargeoffset"]
+    ]
+    # data_hour = data_hour_cleaned.drop(["unitdischargeoffset"], axis=1)
+    # print(data_hour)
+    data_hour = data_hour_cleaned.copy()
+
+    max_offset_per_patient = data_hour.groupby(column_names[0]).max().reset_index()
+    
+    complete_ranges = []
+    for index, row in max_offset_per_patient.iterrows():
+        patient_id = row[column_names[0]]
+        # max_offset = row[column_names[1]]
+        max_offset = row["unitdischargeoffset"]
+        complete_range = pd.DataFrame(
+            {column_names[0]: patient_id, column_names[1]: range(int(max_offset) + 1)}
+        )
+        complete_ranges.append(complete_range)
+
+    complete_ranges = pd.concat(complete_ranges, ignore_index=True)
+    data_full = pd.merge(
+        complete_ranges, data_hour, on=[column_names[0], column_names[1]], how="left"
+    )
+    data_full.drop(["unitdischargeoffset"], axis=1, inplace=True)
+    data_full_index = create_index(data_full)
+    return data_full, data_full_index
+
+def interpolate(
+    patient_batch,
+    patient_offset,
+    data,
+    max_min_var=True,
+    interpolate_value="mean",
+    kernel="C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))",
+    graph=False
+):
+    """
+    Summary: Interpolate data
+
+    Args:
+        patient_batch: the list of wanted patient id, used to split data
+        patient_offset: the dataframe of patient offset data, including patientunitstayid, unitdischargeoffset
+        data: the data which need interpolation
+        max_min_var: decide how many columns the data has
+        interpolate_value: decide which colunm to be interpolated
+        kernel: the self-defined kernel function for Gaussian Process Regressor
+
+    Returns:
+        data_full: the dataframe of aligned and interpolated data, including patientunitstayid, observationoffset, value
+        data_full_index: the series of the index of the first occurrence of each patient
+    """
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, WhiteKernel
+    
+    kernel = eval(kernel)
+    column_names = data.columns.tolist()
+    print(f"column names: {column_names}")
+    
+    data = data[data[column_names[0]].isin(patient_batch)]
+    patient_offset = patient_offset[patient_offset[column_names[0]].isin(patient_batch)]
+    
+    data_index=create_index(data)
+    if(max_min_var):
+        if(interpolate_value=="mean"):
+            for i in range(len(data_index) - 1):
+                if (
+                    data.iloc[data_index[i] : data_index[i + 1]]
+                    .isnull()
+                    .values.any()
+                ):  # test and i < 50
+                    data_data = data.iloc[data_index[i] : data_index[i + 1]][
+                        [column_names[1], column_names[2]]
+                    ].to_numpy()
+                    data_id = data.iloc[data_index[i] : data_index[i + 1]][
+                        column_names[0]
+                    ].unique()[0]
+
+                    t = data_data[:, 0].astype('float64')
+                    mean_column = [col for col in column_names if 'mean' in col]
+                    if len(mean_column) != 1:
+                        raise ValueError("Expected exactly one column with 'mean' in its name")
+                    y = data_data[mean_column[0]].astype('float64')
+                    t_known = t[~np.isnan(y)]
+                    # skip if there is no known data
+                    if t_known.size == 0:
+                        continue
+                    y_known = y[~np.isnan(y)]
+                    t_missing = t[np.isnan(y)]
+
+                    # kernel
+                    # kernel = C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))
+                    gp = GaussianProcessRegressor(
+                        kernel=kernel, n_restarts_optimizer=10, normalize_y=True
+                    )
+                    gp.fit(t_known.reshape(-1, 1), y_known)  # fit
+                    y_pred, sigma = gp.predict(t_missing.reshape(-1, 1), return_std=True)
+
+                    inter_data = pd.DataFrame(
+                        {
+                            column_names[0]: data_id,
+                            column_names[1]: t_missing,
+                            column_names[2]: y_pred,
+                        }
+                    )
+                    for idx, row in inter_data.iterrows():
+                        mask = (
+                            (data[column_names[0]] == row[column_names[0]])
+                            & (data[column_names[1]] == row[column_names[1]])
+                            & data[column_names[2]].isnull()
+                        )
+                        data.loc[mask, column_names[2]] = row[column_names[2]]
+                    print(f"finished {i}th patient, patient_id: {data_id}")
+                    if graph:
+                        y_pred_all = gp.predict(t.reshape(-1, 1))
+                        plt.figure()
+                        plt.scatter(t_known, y_known, color="red", label="Known data")
+                        plt.scatter(t_missing, y_pred, color="blue", label="Interpolated data")
+                        plt.plot(t, y_pred_all)
+                        plt.fill_between(
+                            t_missing, y_pred - sigma, y_pred + sigma, alpha=0.2, color="blue"
+                        )
+                        plt.title(f"Interpolation for Patient {data_id}")
+                        plt.xlabel("Time Offset")
+                        plt.ylabel(column_names[2])
+                        plt.legend()
+                        plt.show()
+
+            print(f"Gaussian Process Finished!")
+
+            return data, data_index
+        elif(interpolate_value=="max"):
+            for i in range(len(data_index) - 1):
+                if (
+                    data.iloc[data_index[i] : data_index[i + 1]]
+                    .isnull()
+                    .values.any()
+                ):  # test and i < 50
+                    data_data = data.iloc[data_index[i] : data_index[i + 1]][
+                        [column_names[1], column_names[2]]
+                    ].to_numpy()
+                    data_id = data.iloc[data_index[i] : data_index[i + 1]][
+                        column_names[0]
+                    ].unique()[0]
+
+                    t = data_data[:, 0].astype('float64')
+                    mean_column = [col for col in column_names if 'max' in col]
+                    if len(mean_column) != 1:
+                        raise ValueError("Expected exactly one column with 'max' in its name")
+                    y = data_data[mean_column[0]].astype('float64')
+                    t_known = t[~np.isnan(y)]
+                    # skip if there is no known data
+                    if t_known.size == 0:
+                        continue
+                    y_known = y[~np.isnan(y)]
+                    t_missing = t[np.isnan(y)]
+
+                    # kernel
+                    # kernel = C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))
+                    gp = GaussianProcessRegressor(
+                        kernel=kernel, n_restarts_optimizer=10, normalize_y=True
+                    )
+                    gp.fit(t_known.reshape(-1, 1), y_known)  # fit
+                    y_pred, sigma = gp.predict(t_missing.reshape(-1, 1), return_std=True)
+
+                    inter_data = pd.DataFrame(
+                        {
+                            column_names[0]: data_id,
+                            column_names[1]: t_missing,
+                            column_names[2]: y_pred,
+                        }
+                    )
+                    for idx, row in inter_data.iterrows():
+                        mask = (
+                            (data[column_names[0]] == row[column_names[0]])
+                            & (data[column_names[1]] == row[column_names[1]])
+                            & data[column_names[2]].isnull()
+                        )
+                        data.loc[mask, column_names[2]] = row[column_names[2]]
+                    print(f"finished {i}th patient, patient_id: {data_id}")
+                    if graph:
+                        y_pred_all = gp.predict(t.reshape(-1, 1))
+                        plt.figure()
+                        plt.scatter(t_known, y_known, color="red", label="Known data")
+                        plt.scatter(t_missing, y_pred, color="blue", label="Interpolated data")
+                        plt.plot(t, y_pred_all)
+                        plt.fill_between(
+                            t_missing, y_pred - sigma, y_pred + sigma, alpha=0.2, color="blue"
+                        )
+                        plt.title(f"Interpolation for Patient {data_id}")
+                        plt.xlabel("Time Offset")
+                        plt.ylabel(column_names[2])
+                        plt.legend()
+                        plt.show()
+
+            print(f"Gaussian Process Finished!")
+            return data, data_index
+        elif(interpolate_value=="min"):
+            for i in range(len(data_index) - 1):
+                if (
+                    data.iloc[data_index[i] : data_index[i + 1]]
+                    .isnull()
+                    .values.any()
+                ):  # test and i < 50
+                    data_data = data.iloc[data_index[i] : data_index[i + 1]][
+                        [column_names[1], column_names[2]]
+                    ].to_numpy()
+                    data_id = data.iloc[data_index[i] : data_index[i + 1]][
+                        column_names[0]
+                    ].unique()[0]
+
+                    t = data_data[:, 0].astype('float64')
+                    mean_column = [col for col in column_names if 'min' in col]
+                    if len(mean_column) != 1:
+                        raise ValueError("Expected exactly one column with 'min' in its name")
+                    y = data_data[mean_column[0]].astype('float64')
+                    t_known = t[~np.isnan(y)]
+                    # skip if there is no known data
+                    if t_known.size == 0:
+                        continue
+                    y_known = y[~np.isnan(y)]
+                    t_missing = t[np.isnan(y)]
+
+                    # kernel
+                    # kernel = C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))
+                    gp = GaussianProcessRegressor(
+                        kernel=kernel, n_restarts_optimizer=10, normalize_y=True
+                    )
+                    gp.fit(t_known.reshape(-1, 1), y_known)  # fit
+                    y_pred, sigma = gp.predict(t_missing.reshape(-1, 1), return_std=True)
+
+                    inter_data = pd.DataFrame(
+                        {
+                            column_names[0]: data_id,
+                            column_names[1]: t_missing,
+                            column_names[2]: y_pred,
+                        }
+                    )
+                    for idx, row in inter_data.iterrows():
+                        mask = (
+                            (data[column_names[0]] == row[column_names[0]])
+                            & (data[column_names[1]] == row[column_names[1]])
+                            & data[column_names[2]].isnull()
+                        )
+                        data.loc[mask, column_names[2]] = row[column_names[2]]
+                    print(f"finished {i}th patient, patient_id: {data_id}")
+                    if graph:
+                        y_pred_all = gp.predict(t.reshape(-1, 1))
+                        plt.figure()
+                        plt.scatter(t_known, y_known, color="red", label="Known data")
+                        plt.scatter(t_missing, y_pred, color="blue", label="Interpolated data")
+                        plt.plot(t, y_pred_all)
+                        plt.fill_between(
+                            t_missing, y_pred - sigma, y_pred + sigma, alpha=0.2, color="blue"
+                        )
+                        plt.title(f"Interpolation for Patient {data_id}")
+                        plt.xlabel("Time Offset")
+                        plt.ylabel(column_names[2])
+                        plt.legend()
+                        plt.show()
+
+            print(f"Gaussian Process Finished!")
+            return data, data_index
+        
+        elif(interpolate_value=="var"):
+            for i in range(len(data_index) - 1):
+                if (
+                    data.iloc[data_index[i] : data_index[i + 1]]
+                    .isnull()
+                    .values.any()
+                ):  # test and i < 50
+                    data_data = data.iloc[data_index[i] : data_index[i + 1]][
+                        [column_names[1], column_names[2]]
+                    ].to_numpy()
+                    data_id = data.iloc[data_index[i] : data_index[i + 1]][
+                        column_names[0]
+                    ].unique()[0]
+
+                    t = data_data[:, 0].astype('float64')
+                    mean_column = [col for col in column_names if 'var' in col]
+                    if len(mean_column) != 1:
+                        raise ValueError("Expected exactly one column with 'var' in its name")
+                    y = data_data[mean_column[0]].astype('float64')
+                    t_known = t[~np.isnan(y)]
+                    # skip if there is no known data
+                    if t_known.size == 0:
+                        continue
+                    y_known = y[~np.isnan(y)]
+                    t_missing = t[np.isnan(y)]
+
+                    # kernel
+                    # kernel = C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))
+                    gp = GaussianProcessRegressor(
+                        kernel=kernel, n_restarts_optimizer=10, normalize_y=True
+                    )
+                    gp.fit(t_known.reshape(-1, 1), y_known)  # fit
+                    y_pred, sigma = gp.predict(t_missing.reshape(-1, 1), return_std=True)
+
+                    inter_data = pd.DataFrame(
+                        {
+                            column_names[0]: data_id,
+                            column_names[1]: t_missing,
+                            column_names[2]: y_pred,
+                        }
+                    )
+                    for idx, row in inter_data.iterrows():
+                        mask = (
+                            (data[column_names[0]] == row[column_names[0]])
+                            & (data[column_names[1]] == row[column_names[1]])
+                            & data[column_names[2]].isnull()
+                        )
+                        data.loc[mask, column_names[2]] = row[column_names[2]]
+                    print(f"finished {i}th patient, patient_id: {data_id}")
+                    if graph:
+                        y_pred_all = gp.predict(t.reshape(-1, 1))
+                        plt.figure()
+                        plt.scatter(t_known, y_known, color="red", label="Known data")
+                        plt.scatter(t_missing, y_pred, color="blue", label="Interpolated data")
+                        plt.plot(t, y_pred_all)
+                        plt.fill_between(
+                            t_missing, y_pred - sigma, y_pred + sigma, alpha=0.2, color="blue"
+                        )
+                        plt.title(f"Interpolation for Patient {data_id}")
+                        plt.xlabel("Time Offset")
+                        plt.ylabel(column_names[2])
+                        plt.legend()
+                        plt.show()
+
+            print(f"Gaussian Process Finished!")
+            return data, data_index
+    else:
+        for i in range(len(data_index) - 1):
+            if (
+                data.iloc[data_index[i] : data_index[i + 1]]
+                .isnull()
+                .values.any()
+            ):  # test and i < 50
+                data_data = data.iloc[data_index[i] : data_index[i + 1]][
+                    [column_names[1], column_names[2]]
+                ].to_numpy()
+                data_id = data.iloc[data_index[i] : data_index[i + 1]][
+                    column_names[0]
+                ].unique()[0]
+
+                t = data_data[:, 0].astype('float64')
+                y = data_data[:, 1].astype('float64')
+                t_known = t[~np.isnan(y)]
+                # skip if there is no known data
+                if t_known.size == 0:
+                    continue
+                y_known = y[~np.isnan(y)]
+                t_missing = t[np.isnan(y)]
+
+                # kernel
+                # kernel = C(1.0) * RBF(10) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e5))
+                gp = GaussianProcessRegressor(
+                    kernel=kernel, n_restarts_optimizer=10, normalize_y=True
+                )
+                gp.fit(t_known.reshape(-1, 1), y_known)  # fit
+                y_pred, sigma = gp.predict(t_missing.reshape(-1, 1), return_std=True)
+
+                inter_data = pd.DataFrame(
+                    {
+                        column_names[0]: data_id,
+                        column_names[1]: t_missing,
+                        column_names[2]: y_pred,
+                    }
+                )
+                for idx, row in inter_data.iterrows():
+                    mask = (
+                        (data[column_names[0]] == row[column_names[0]])
+                        & (data[column_names[1]] == row[column_names[1]])
+                        & data[column_names[2]].isnull()
+                    )
+                    data.loc[mask, column_names[2]] = row[column_names[2]]
+                print(f"finished {i}th patient, patient_id: {data_id}")
+                if graph:
+                    y_pred_all = gp.predict(t.reshape(-1, 1))
+                    plt.figure()
+                    plt.scatter(t_known, y_known, color="red", label="Known data")
+                    plt.scatter(t_missing, y_pred, color="blue", label="Interpolated data")
+                    plt.plot(t, y_pred_all)
+                    plt.fill_between(
+                        t_missing, y_pred - sigma, y_pred + sigma, alpha=0.2, color="blue"
+                    )
+                    plt.title(f"Interpolation for Patient {data_id}")
+                    plt.xlabel("Time Offset")
+                    plt.ylabel(column_names[2])
+                    plt.legend()
+                    plt.show()
+
+        print(f"Gaussian Process Finished!")
+        return data, data_index
