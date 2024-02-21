@@ -1238,7 +1238,7 @@ def extract_data_optional(
     from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, WhiteKernel
 
     # turn kernel string to kernel function
-    kernel = eval(kernel)
+    # kernel = eval(kernel)
 
     column_names = data.columns.tolist()
     print(f"column names: {column_names}")
