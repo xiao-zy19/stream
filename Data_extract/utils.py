@@ -1283,13 +1283,13 @@ def extract_data_optional(
         data_hour_buf_min = data_hour_buf.groupby([column_names[0], column_names[1]], as_index=False)[column_names[2]].min()
         column_name = data_hour_buf_min.columns[2]
         new_column_name = column_name + '_min'
-        data_hour_buf_max = data_hour_buf_min.rename(columns={column_name: new_column_name})
+        data_hour_buf_min = data_hour_buf_min.rename(columns={column_name: new_column_name})
         
 
         data_hour_buf_var = data_hour_buf.groupby([column_names[0], column_names[1]], as_index=False)[column_names[2]].var()
         column_name = data_hour_buf_var.columns[2]
         new_column_name = column_name + '_var'
-        data_hour_buf_max = data_hour_buf_var.rename(columns={column_name: new_column_name})
+        data_hour_buf_var = data_hour_buf_var.rename(columns={column_name: new_column_name})
         data_hour_buf_var[new_column_name] = data_hour_buf_var[new_column_name].fillna(0)
         
         data_hour_buf = pd.merge(
